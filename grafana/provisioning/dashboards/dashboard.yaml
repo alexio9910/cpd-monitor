@@ -1,0 +1,15 @@
+# Le dice a Grafana que cargue automáticamente, al arrancar, cualquier
+# dashboard JSON que encuentre en /var/lib/grafana/dashboards (montado
+# desde ./grafana/dashboards en docker-compose.yml).
+apiVersion: 1
+
+providers:
+  - name: "CPD"
+    orgId: 1
+    folder: "CPD - Monitorización ambiental"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

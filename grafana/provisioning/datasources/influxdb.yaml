@@ -1,0 +1,21 @@
+# Aprovisiona automáticamente el datasource de InfluxDB en Grafana al
+# arrancar el contenedor, para no tener que configurarlo a mano en la UI.
+# Las variables ${...} las rellena Grafana a partir de las variables de
+# entorno del contenedor (definidas en docker-compose.yml / .env).
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-CPD
+    uid: influxdb-cpd
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    editable: true
+    jsonData:
+      version: Flux
+      organization: ${INFLUXDB_ORG}
+      defaultBucket: ${INFLUXDB_BUCKET}
+      tlsSkipVerify: true
+    secureJsonData:
+      token: ${INFLUXDB_ADMIN_TOKEN}

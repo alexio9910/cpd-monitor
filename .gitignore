@@ -1,0 +1,20 @@
+# Secretos / configuración local — nunca se sube al repositorio.
+config.yaml
+.env
+
+# Binarios compilados.
+bin/
+cpd-monitor
+
+# Datos de los contenedores si alguna vez se montan como bind-mount local.
+influxdb-data/
+grafana-data/
+
+# Go
+*.test
+*.out
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store

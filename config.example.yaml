@@ -1,0 +1,25 @@
+# Copia este fichero a "config.yaml" y rellena tus valores reales.
+# config.yaml NUNCA se sube a GitHub (está en .gitignore) porque contiene
+# el token de InfluxDB.
+
+influxdb:
+  url: "http://localhost:8086"
+  token: "PEGA_AQUI_EL_TOKEN_DE_INFLUXDB"
+  org: "mi-empresa"
+  bucket: "cpd_monitorizacion"
+
+# Cada cuánto se lee cada sensor. 60s es un buen valor por defecto.
+intervalo_lectura_segundos: 60
+
+# Tiempo máximo de espera al conectar por BLE antes de dar el intento
+# por fallido y reintentar en el siguiente ciclo.
+timeout_conexion_segundos: 15
+
+sensores:
+  - id: "pasillo_frio_a"
+    mac: "AA:BB:CC:DD:EE:01"
+    ubicacion: "CPD - Pasillo frío, fila A"
+
+  - id: "pasillo_caliente_b"
+    mac: "AA:BB:CC:DD:EE:02"
+    ubicacion: "CPD - Pasillo caliente, fila B"

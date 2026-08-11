@@ -1,0 +1,27 @@
+[Unit]
+Description=Colector BLE Sensirion SHT4x -> InfluxDB (monitorizacion CPD)
+After=network-online.target bluetooth.target
+Wants=network-online.target bluetooth.target
+
+[Service]
+Type=simple
+User=cpdmonitor
+Group=cpdmonitor
+WorkingDirectory=/opt/cpd-monitor
+ExecStart=/opt/cpd-monitor/cpd-monitor -config /opt/cpd-monitor/config.yaml
+Restart=on-failure
+RestartSec=10
+
+# El usuario de servicio necesita pertenecer al grupo "bluetooth" del
+# sistema para poder hablar con BlueZ a traves de D-Bus. El README explica
+# como crear el usuario y anadirlo a este grupo.
+SupplementaryGroups=bluetooth
+
+# Endurecimiento basico del servicio (opcional pero recomendable).
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/cpd-monitor
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
