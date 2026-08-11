@@ -60,6 +60,14 @@ versión 1 esté funcionando de forma estable.
   Sensirion, así que no sustituye al colector en Go. Puede ser útil el día
   de mañana si añades otras fuentes de datos al mismo InfluxDB (por ejemplo,
   métricas de los propios racks/PDUs).
+- **Volver a `tinygo.org/x/bluetooth` si arreglan su compatibilidad con
+  BlueZ reciente.** Se descartó esa librería de abstracción por un bug sin
+  resolver a día de hoy con BlueZ ≥5.55 (ver
+  [issue #118](https://github.com/tinygo-org/bluetooth/issues/118)); el
+  colector habla con BlueZ directamente por D-Bus en su lugar (ver
+  `docs/ARQUITECTURA.md`). Si en el futuro se publica una versión estable
+  con el arreglo, valdría la pena reevaluar: simplificaría bastante
+  `internal/sensor/gadget.go`.
 - **Redundancia de cobertura.** Dos sensores dan una foto parcial de un CPD.
   El patrón habitual en la industria es sensorizar por pasillo frío/caliente
   y por altura de rack (arriba/abajo), para detectar puntos calientes reales.

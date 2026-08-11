@@ -11,9 +11,12 @@ influxdb:
 # Cada cuánto se lee cada sensor. 60s es un buen valor por defecto.
 intervalo_lectura_segundos: 60
 
-# Tiempo máximo de espera al conectar por BLE antes de dar el intento
-# por fallido y reintentar en el siguiente ciclo.
-timeout_conexion_segundos: 15
+# Tiempo máximo de espera al conectar por BLE y resolver sus servicios GATT
+# antes de dar el intento por fallido y reintentar en el siguiente ciclo.
+# 30s da margen de sobra incluso para el primer ciclo tras un reinicio del
+# host, cuando BlueZ tiene que descubrir el sensor y resolver su árbol GATT
+# completo desde cero.
+timeout_conexion_segundos: 30
 
 sensores:
   - id: "pasillo_frio_a"

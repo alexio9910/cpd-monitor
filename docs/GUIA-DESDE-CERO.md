@@ -300,8 +300,15 @@ Deberías ver una línea por sensor cada 60 segundos, por ejemplo:
 2026/08/11 10:15:03 [pasillo_frio_a] 21.40°C  45.2%HR  bateria=87%
 ```
 
-Si funciona, para el programa con `Ctrl+C` y sigue a la Fase 9. Si da error,
-mira la tabla de la Fase 12 antes de seguir.
+> 💡 El **primer ciclo** puede tardar más de lo normal o incluso fallar con
+> `tiempo de espera agotado resolviendo servicios BLE`: es la primera vez
+> que BlueZ conecta con el sensor en esta sesión y tiene que recorrer todo
+> su árbol de servicios GATT. A partir del segundo ciclo, con la conexión
+> ya establecida y mantenida (ver `docs/ARQUITECTURA.md`), las lecturas
+> deberían ser rápidas y estables.
+
+Si funciona, para el programa con `Ctrl+C` y sigue a la Fase 9. Si da un
+error persistente, mira la tabla de la Fase 12 antes de seguir.
 
 ---
 
@@ -374,7 +381,9 @@ datos reales, y haz commit de ese cambio.
 |---|---|
 | `Permission denied (publickey)` al hacer `git push` o `git clone` | Tu clave SSH no está añadida en GitHub, o le falta añadirla en esa máquina concreta (WSL y Pi tienen claves distintas). Repite el paso 4.3 o 6.4. |
 | `docker: command not found` | Cierra y abre la terminal tras instalar Docker; si sigue sin ir, reinstala con el comando de la Fase 1/6.3. |
-| `no se pudo conectar con el sensor ...` | El sensor está apagado, fuera de alcance, o con la pila agotada. Acércate con nRF Connect para comprobarlo. |
+| `no se pudo conectar con el sensor ...` | El sensor está apagado, fuera de alcance, o con la pila agotada. Comprueba con `bluetoothctl scan on`. |
+| `tiempo de espera agotado resolviendo servicios BLE del sensor ...` | Normal en el primer ciclo tras un reinicio del host (BlueZ redescubre el sensor desde cero). Si persiste en ciclos posteriores, sube `timeout_conexion_segundos` en `config.yaml`. |
+| `Method "Get"/"Connect" ... doesn't exist` (error de D-Bus) | Bug de compatibilidad conocido de BlueZ reciente con ciertas librerías BLE — por eso el colector habla con BlueZ directamente (ver `docs/ARQUITECTURA.md`). Si aparece, `sudo systemctl restart bluetooth` y deja que el siguiente ciclo redescubra el sensor. |
 | El colector no arranca como servicio pero sí a mano con `sudo` | El usuario `cpdmonitor` no está en el grupo `bluetooth` (Fase 6.5), o hace falta `sudo systemctl daemon-reload` tras copiar el `.service`. |
 | Grafana no muestra datos pero el colector no da error | Revisa que `influxdb.org`/`influxdb.bucket` en `config.yaml` coincidan exactamente con `INFLUXDB_ORG`/`INFLUXDB_BUCKET` de `.env`. |
 | No sabes qué significa un mensaje de error | Cópialo tal cual (todo el texto) y pégamelo — dime también en qué fase estabas. |

@@ -32,7 +32,7 @@ services:
     # Comprueba en https://hub.docker.com/r/grafana/grafana-oss/tags si hay
     # una versión más reciente antes de desplegar en producción, y fija
     # siempre una versión concreta (nunca "latest") para evitar sorpresas.
-    image: grafana/grafana-oss:13.0.0
+    image: grafana/grafana:13.0.2
     container_name: cpd-grafana
     restart: unless-stopped
     ports:

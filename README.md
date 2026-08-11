@@ -238,8 +238,16 @@ Deberías ver por consola una línea cada 60 segundos por sensor, por ejemplo:
 2026/08/11 10:15:03 [pasillo_frio_a] 21.40°C  45.2%HR  bateria=87%
 ```
 
-Si ves un error, revisa la sección **Solución de problemas** más abajo.
-Cuando funcione, para el proceso con `Ctrl+C` y sigue con el paso 7.
+> 💡 El **primer ciclo** puede tardar más de lo normal o incluso fallar con
+> `tiempo de espera agotado resolviendo servicios BLE`: es la primera vez
+> que BlueZ conecta con el sensor en esta sesión y tiene que recorrer todo
+> su árbol de servicios GATT. A partir del segundo ciclo, con la conexión
+> ya establecida y mantenida (ver `docs/ARQUITECTURA.md`), las lecturas
+> deberían ser rápidas y estables.
+
+Si ves un error persistente, revisa la sección **Solución de problemas**
+más abajo. Cuando funcione, para el proceso con `Ctrl+C` y sigue con el
+paso 7.
 
 ---
 
@@ -283,9 +291,10 @@ git push
 
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
-| `no se pudo conectar con el sensor ...` | El sensor está fuera de alcance o su batería está agotada | Acércate con el móvil y nRF Connect para confirmar que sigue emitiendo |
-| `no se pudieron descubrir los servicios BLE` | El firmware de tu unidad usa otros UUID | Repite el paso 1 y actualiza las constantes en `internal/sensor/gadget.go` |
-| `Properties.GetAll org.bluez.Device1 ...` (error de D-Bus) | Problema conocido de BlueZ con dispositivos "fantasma" en su caché | `sudo bluetoothctl remove AA:BB:CC:DD:EE:FF` y vuelve a intentarlo |
+| `no se pudo conectar con el sensor ...` | El sensor está fuera de alcance o su batería está agotada | Acércate y comprueba con `bluetoothctl scan on` que sigue emitiendo |
+| `no se pudieron descubrir los servicios BLE` / `no expone las características ... esperadas` | El firmware de tu unidad usa otros UUID | Conéctate con `bluetoothctl` (`connect <MAC>` → `menu gatt` → `list-attributes <MAC>`) y compara con las UUID de `internal/sensor/gadget.go` |
+| `tiempo de espera agotado resolviendo servicios BLE del sensor ...` | Es la primera vez que BlueZ conecta con ese sensor en esta sesión (tras reiniciar el host o el servicio `bluetooth`) y tarda en recorrer todo su árbol GATT | Normal en el primer ciclo tras un arranque; si persiste en ciclos posteriores, sube `timeout_conexion_segundos` en `config.yaml` |
+| `Method "Get"/"Connect" ... doesn't exist` (error de D-Bus) | Bug de compatibilidad conocido entre BlueZ reciente (≥5.55) y ciertas librerías BLE de abstracción — por eso el colector habla con BlueZ directamente por D-Bus (ver `docs/ARQUITECTURA.md`) | Si aún así aparece, `sudo systemctl restart bluetooth` y deja que el colector redescubra el sensor en el siguiente ciclo |
 | El colector no arranca como servicio pero sí a mano con `sudo` | El usuario `cpdmonitor` no está en el grupo `bluetooth`, o hace falta reiniciar sesión de D-Bus | Revisa el paso 2 y reinicia el host si el problema persiste |
 | Grafana no tiene datos pero el colector no da error | El bucket/org del dashboard no coincide con los de tu `.env` | Edita `grafana/dashboards/cpd-temp-humedad.json` y sustituye `"cpd_monitorizacion"` por el nombre real de tu bucket |
 

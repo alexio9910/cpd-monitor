@@ -34,6 +34,8 @@ func main() {
 		log.Fatalf("error de Bluetooth: %v", err)
 	}
 
+	defer sensor.DesconectarTodos()
+
 	escritor := store.Nueva(cfg.InfluxDB)
 	defer escritor.Cerrar()
 
