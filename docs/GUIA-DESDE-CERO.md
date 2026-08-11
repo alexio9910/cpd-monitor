@@ -349,6 +349,92 @@ sensores con datos.
 
 ---
 
+## Fase 10.5 — Añadir un sensor adicional (cuando llegue)
+
+Cuando tengas el segundo sensor físico, **no hace falta recompilar nada**:
+solo editar un fichero de configuración y reiniciar el servicio. Sigue
+conectado a la Raspberry Pi por SSH.
+
+### 1. Identifica la MAC del nuevo sensor
+
+Con el sensor encendido y cerca de la Pi:
+
+```bash
+bluetoothctl
+scan on
+```
+
+Espera a ver una línea con su nombre (algo como `SHT40 Gadget`) y anota su
+MAC. Luego:
+
+```
+scan off
+exit
+```
+
+(Es el mismo procedimiento de la Fase 5/sección 1 del README — lo tienes
+más detallado ahí si lo necesitas.)
+
+### 2. Edita el fichero de configuración de trabajo
+
+```bash
+cd ~/cpd-monitor
+nano config.yaml
+```
+
+Añade un bloque nuevo bajo `sensores:`, con un `id` distinto al que ya
+tienes (por ejemplo `sensor2`) y la MAC que acabas de anotar:
+
+```yaml
+sensores:
+  - id: "sensor1"
+    mac: "E4:E9:00:CB:E2:DC"
+    ubicacion: "Sensor 1"
+  - id: "sensor2"
+    mac: "AA:BB:CC:DD:EE:FF"
+    ubicacion: "Sensor 2"
+```
+
+Guarda con `Ctrl+O`, `Enter`, y sal con `Ctrl+X`.
+
+### 3. Despliega el cambio y reinicia el servicio
+
+El servicio en producción lee su propia copia de `config.yaml`, guardada en
+`/opt/cpd-monitor/`, que es independiente de la que acabas de editar en
+`~/cpd-monitor/`. Hay que copiar la nueva versión ahí y reiniciar:
+
+```bash
+sudo cp config.yaml /opt/cpd-monitor/config.yaml
+sudo chown cpdmonitor:cpdmonitor /opt/cpd-monitor/config.yaml
+sudo systemctl restart cpd-monitor
+```
+
+### 4. Comprueba que ambos sensores están leyendo
+
+```bash
+journalctl -u cpd-monitor -f
+```
+
+Deberías ver una línea por cada sensor en cada ciclo de 60 segundos. Es
+normal que el sensor recién añadido tarde un poco más en su primerísimo
+ciclo (BlueZ tiene que descubrirlo y resolver su árbol de servicios GATT
+por primera vez), igual que pasó con el primero.
+
+Sal con `Ctrl+C` cuando lo confirmes (el servicio sigue corriendo igual).
+
+### 5. Grafana no necesita ningún cambio
+
+El dashboard **"CPD - Temperatura y Humedad"** agrupa las series por
+`sensor_id`/`ubicacion`, así que en cuanto InfluxDB reciba datos del nuevo
+sensor, aparecerá automáticamente como una línea adicional en los mismos
+paneles de temperatura, humedad y batería — sin tocar nada en Grafana.
+
+> 💡 `config.yaml` contiene tu token real de InfluxDB y está en
+> `.gitignore` — nunca se sube a GitHub. Añadir un sensor así es un cambio
+> puramente local en el host, sin necesidad de hacer commit ni push.
+
+---
+
 ## Fase 11 — Tu flujo de trabajo a partir de ahora
 
 Cada vez que quieras cambiar algo del proyecto (por ejemplo, tocar el

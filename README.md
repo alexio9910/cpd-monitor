@@ -287,6 +287,57 @@ git push
 
 ---
 
+## 9. Añadir un sensor adicional
+
+El colector no necesita recompilarse para añadir sensores: basta con editar
+`config.yaml` y reiniciar el servicio.
+
+1. **Identifica la MAC del sensor nuevo** (ver sección 1 — Opción B,
+   `bluetoothctl scan on`, es la más fiable).
+2. **Edita el `config.yaml` de trabajo** (el de `~/cpd-monitor/config.yaml`
+   en el host, **no** `config.example.yaml`) y añade un bloque nuevo bajo
+   `sensores:`, con un `id` distinto a los que ya tengas:
+
+```yaml
+   sensores:
+     - id: "sensor1"
+       mac: "E4:E9:00:CB:E2:DC"
+       ubicacion: "Sensor 1"
+     - id: "sensor2"
+       mac: "AA:BB:CC:DD:EE:FF"   # sustituye por la MAC real
+       ubicacion: "Sensor 2"       # sustituye por su ubicación real
+```
+
+3. **Copia el `config.yaml` actualizado a donde vive el servicio** y
+   reinícialo (el servicio lee su copia en `/opt/cpd-monitor/`, no la de tu
+   carpeta de trabajo):
+
+```bash
+   sudo cp config.yaml /opt/cpd-monitor/config.yaml
+   sudo chown cpdmonitor:cpdmonitor /opt/cpd-monitor/config.yaml
+   sudo systemctl restart cpd-monitor
+```
+
+4. **Verifica** que ambos sensores aparecen:
+
+```bash
+   journalctl -u cpd-monitor -f
+```
+
+   Deberías ver líneas para `sensor1` y `sensor2` en cada ciclo (el segundo
+   sensor puede tardar un poco más en su primer ciclo, por el mismo motivo
+   que el primero: BlueZ tiene que descubrirlo y resolver su árbol GATT).
+
+5. En Grafana no hay que tocar nada: el dashboard ya agrupa por
+   `sensor_id`/`ubicacion`, así que el segundo sensor aparece
+   automáticamente como una línea/serie nueva en los mismos paneles.
+
+> `config.yaml` contiene tu token real de InfluxDB y nunca se sube a
+> GitHub — este procedimiento no requiere ningún commit ni push, solo
+> tocar el fichero local del host.
+
+---
+
 ## Solución de problemas comunes
 
 | Síntoma | Causa probable | Qué hacer |
