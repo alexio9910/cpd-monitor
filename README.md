@@ -40,32 +40,72 @@ flowchart LR
 - **Go 1.22+** (`go version` para comprobarlo).
 - **Docker** y **Docker Compose** (para InfluxDB y Grafana).
 - Una cuenta de GitHub con una organización ya creada (la tienes).
-- La app móvil **nRF Connect** (Android/iOS, gratuita) para el paso 1.
+- La app móvil **nRF Connect** (Android/iOS, gratuita) para el paso 1, si eliges esa opción.
 
 ---
 
 ## 1. Identificar y verificar los sensores BLE
 
 Antes de escribir nada, hay que confirmar la dirección MAC de cada sensor y
-que expone los servicios BLE que el código espera.
+que expone los servicios BLE que el código espera. Hay dos formas de
+conseguirlo — elige la que te resulte más cómoda.
+
+### Opción A — con el móvil, usando nRF Connect (solo Android)
 
 1. Enciende el sensor (botón físico, según el modelo) y abre **nRF Connect**
    en tu móvil.
 2. Pulsa **Scan** y busca un dispositivo llamado algo como `SHT4x Smart Gadget`
    o `Smart Humigadget`. Anota su **dirección MAC** (formato
-   `AA:BB:CC:DD:EE:FF`) — la necesitarás en el paso 5.
+   `AA:BB:CC:DD:EE:FF`).
 3. Conéctate al dispositivo desde la app y comprueba que aparecen (entre
    otros) dos servicios/características con estos UUID:
    - `00001235-b38d-4985-720e-0f993a68ee41` → humedad
    - `00002235-b38d-4985-720e-0f993a68ee41` → temperatura
 
-   Si tu unidad concreta expone UUID distintos (revisiones de firmware
-   futuras podrían cambiarlos), anótalos: tendrás que sustituirlos en
-   `internal/sensor/gadget.go` (constantes `uuidServicioHumedad` y
-   `uuidServicioTemperatura`).
-4. Repite con el segundo sensor y pon a cada uno una etiqueta física
-   (una pegatina) indicando dónde vas a instalarlo — lo necesitarás para
-   rellenar `ubicacion` en la configuración.
+> ⚠️ **En iPhone esta opción no sirve**: iOS oculta la dirección MAC real
+> de los dispositivos Bluetooth a todas las apps (restricción de privacidad
+> de Apple), así que ninguna app te la va a dar ahí, ni siquiera nRF
+> Connect. Si usas iPhone, ve directamente a la Opción B.
+
+### Opción B — escaneando desde el propio host Linux (recomendado)
+
+El colector va a leer los sensores desde el adaptador Bluetooth del host
+(la Raspberry Pi u otro Linux con BlueZ), así que puedes obtener la MAC
+directamente ahí, sin depender de ninguna app de móvil — y de paso
+confirmas que el sensor tiene alcance real desde donde va a vivir el
+colector:
+
+```bash
+bluetoothctl
+scan on
+```
+
+Con el sensor encendido y cerca del host, irán apareciendo líneas con la
+MAC de cada dispositivo BLE detectado alrededor; busca la que tenga un
+nombre parecido a `SHT4x Smart Gadget` o `Smart Humigadget`. Anota su MAC
+y sal del escaneo con:
+
+```
+scan off
+exit
+```
+
+Los UUID de los servicios de humedad y temperatura (`00001235-...` y
+`00002235-...`) son los que publica el propio firmware de Sensirion y
+están confirmados de forma independiente por la comunidad — no hace falta
+verificarlos a mano salvo que algo falle más adelante (ver la sección
+**Solución de problemas**).
+
+---
+
+Si tu unidad concreta expone UUID distintos (revisiones de firmware
+futuras podrían cambiarlos), tendrás que sustituirlos en
+`internal/sensor/gadget.go` (constantes `uuidServicioHumedad` y
+`uuidServicioTemperatura`).
+
+Repite con cada sensor adicional y pon a cada uno una etiqueta física
+(una pegatina) indicando dónde vas a instalarlo — lo necesitarás para
+rellenar `ubicacion` en la configuración.
 
 ---
 
@@ -114,11 +154,11 @@ Crea el repositorio vacío en tu organización de GitHub (desde la web, sin
 README ni licencia, para no chocar con lo que ya tienes) y enlázalo:
 
 ```bash
-git remote add origin git@github.com:alexio9910/cpd-monitor.git
+git remote add origin git@github.com:TU-ORGANIZACION/cpd-monitor.git
 git push -u origin main
 ```
 
-> Sustituye `alexio9910` aquí y en `go.mod` / `internal/store/influx.go`
+> Sustituye `TU-ORGANIZACION` aquí y en `go.mod` / `internal/store/influx.go`
 > por el nombre real de tu organización de GitHub.
 
 ---
