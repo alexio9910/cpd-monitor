@@ -8,7 +8,7 @@
 #
 # Requiere una variable PI_HOST en tu .env local (el de tu WSL, no hace
 # falta que tenga el resto de variables de InfluxDB/Grafana), por ejemplo:
-#   PI_HOST=cpd@192.168.99.82
+#   PI_HOST=usuario@192.168.1.50
 # Así el host real nunca queda escrito en un fichero que se sube a GitHub.
 
 set -e

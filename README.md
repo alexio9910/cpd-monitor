@@ -303,7 +303,7 @@ El colector no necesita recompilarse para añadir sensores: basta con editar
 ```yaml
    sensores:
      - id: "sensor1"
-       mac: "E4:E9:00:CB:E2:DC"
+       mac: "AA:BB:CC:DD:EE:01"   # sustituye por la MAC real
        ubicacion: "Sensor 1"
      - id: "sensor2"
        mac: "AA:BB:CC:DD:EE:FF"   # sustituye por la MAC real

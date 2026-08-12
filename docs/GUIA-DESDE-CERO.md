@@ -472,10 +472,10 @@ tienes (por ejemplo `sensor2`) y la MAC que acabas de anotar:
 ```yaml
 sensores:
   - id: "sensor1"
-    mac: "E4:E9:00:CB:E2:DC"
+    mac: "AA:BB:CC:DD:EE:01"   # sustituye por la MAC real
     ubicacion: "Sensor 1"
   - id: "sensor2"
-    mac: "AA:BB:CC:DD:EE:FF"
+    mac: "AA:BB:CC:DD:EE:FF"   # sustituye por la MAC real
     ubicacion: "Sensor 2"
 ```
 

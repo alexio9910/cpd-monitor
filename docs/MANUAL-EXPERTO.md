@@ -96,19 +96,21 @@ dashboard".
 
 ## 4. Cambiar quién recibe las alertas por email
 
-Conéctate a la Raspberry Pi por SSH y edita un solo fichero:
+Las direcciones **no** se editan en el YAML de Grafana directamente (ahí
+solo hay una referencia a una variable, no las direcciones en sí) — se
+cambian en tu fichero de secretos local:
 
 ```bash
-ssh cpd@IP_DE_TU_RASPBERRY
+ssh usuario@IP_DE_TU_RASPBERRY
 cd ~/cpd-monitor
-nano grafana/provisioning/alerting/contactpoints.yaml
+nano .env
 ```
 
-Busca la línea que empieza por `addresses:` — tiene todos los correos
-separados por `;`. Añade, quita o cambia direcciones ahí, por ejemplo:
+Busca la línea `GRAFANA_ALERT_EMAILS=` y añade, quita o cambia
+direcciones ahí, separadas por `;`:
 
-```yaml
-addresses: "monitorizacion@nubecao.com;apajares@nubecao.com;nueva-persona@nubecao.com"
+```
+GRAFANA_ALERT_EMAILS="persona1@tuempresa.com;persona2@tuempresa.com"
 ```
 
 Guarda (`Ctrl+O`, `Enter`, `Ctrl+X`) y aplica el cambio:
@@ -120,8 +122,8 @@ docker compose up -d --force-recreate grafana
 Prueba que llega bien: en Grafana → **Alerting → Contact points →
 `email-cpd` → Test**.
 
-> No olvides hacer commit del cambio (ver sección 8) para que quede
-> guardado también en GitHub.
+> `.env` nunca se sube a GitHub — este cambio es puramente local en el
+> host, no requiere ningún commit.
 
 ---
 
@@ -263,7 +265,7 @@ Todo esto es seguro de ejecutar, no borra datos:
 | No veo datos nuevos en el dashboard | El colector no está leyendo el sensor | `journalctl -u cpd-monitor -f` y mira el último error. Si dice "no se pudo conectar", acércate al sensor o revisa su batería. |
 | Me llega una alerta de "sin datos" | El colector está parado o la Pi tiene un problema | `sudo systemctl status cpd-monitor`. Si no está "active (running)", `sudo systemctl restart cpd-monitor`. |
 | No puedo entrar en Grafana | El contenedor está caído, o la Pi está apagada | Conéctate por SSH y prueba `docker compose ps`. Si `cpd-grafana` no aparece "Up", `docker compose up -d`. |
-| No me llegan alertas por email pero el dashboard sí tiene datos | Problema del servidor SMTP, no del colector | En Grafana → Alerting → Contact points → `email-cpd` → **Test**. Si falla, avisa a IT sobre la cuenta de correo `alertassensores@nubecao.com`. |
+| No me llegan alertas por email pero el dashboard sí tiene datos | Problema del servidor SMTP, no del colector | En Grafana → Alerting → Contact points → `email-cpd` → **Test**. Si falla, avisa a IT sobre la cuenta de correo configurada en `GRAFANA_SMTP_USER` (dentro de `.env`). |
 | Nada de lo anterior funciona | — | Copia el mensaje de error exacto (de `journalctl` o de la pantalla) y pásalo a soporte técnico — con el error literal se resuelve mucho más rápido que describiéndolo de memoria. |
 
 ---
