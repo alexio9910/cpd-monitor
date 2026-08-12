@@ -212,12 +212,25 @@ Deberías ver una línea por sensor cada minuto. `Ctrl+C` para salir.
 ### 7.3 — Añade sus paneles de "valor actual" en Grafana
 
 Las gráficas grandes (Temperatura, Humedad) **ya muestran el sensor
-nuevo solas**, sin tocar nada. Los tres paneles pequeños de "Sensor 1"
-hay que duplicarlos: en el dashboard, entra en modo edición, copia
-"Temperatura actual — Sensor 1" (menú `⋮` → Copy), pégalo, y en el panel
-copiado cambia el título a "— Sensor 2" y, en su query, el filtro
-`sensor_id == "sensor1"` por `sensor_id == "sensor2"`. Repite con los
-otros dos paneles. Guarda el dashboard.
+nuevo solas**, sin tocar nada. Los tres paneles pequeños de "valor
+actual" (Temperatura, Humedad, Batería) sí hay que crearlos — con un
+script ya preparado para ello, en vez de copiarlos a mano en la
+interfaz:
+
+````bash
+cd ~/cpd-monitor
+python3 scripts/anadir_sensor_dashboard.py sensor2 "Sensor 2"
+docker compose restart grafana
+````
+
+El primer argumento es el mismo `id` que pusiste en `config.yaml`
+(sección 7.2); el segundo, el texto que quieres que aparezca en el
+título de los paneles. El script duplica los tres paneles de plantilla
+(los de `sensor1`), les cambia el filtro y el título, y los coloca
+automáticamente en una fila nueva debajo de los existentes — sirve
+igual para un tercer sensor, un cuarto, etc. Si lo ejecutas dos veces
+para el mismo sensor, detecta que ya existen y no hace nada (no
+duplica).
 
 ### 7.4 — Las alertas no requieren ningún cambio
 

@@ -336,10 +336,13 @@ El colector no necesita recompilarse para añadir sensores: basta con editar
    Los tres paneles de "valor actual" (Temperatura actual, Humedad
    actual, Batería) sí están filtrados a propósito a un sensor concreto
    (para que muestren un número, no una mezcla ambigua de varios). Para
-   el segundo sensor, duplica esos tres paneles en el JSON del dashboard
-   (`grafana/dashboards/cpd-temp-humedad.json`), cambiando el título a
-   "— Sensor 2" y el filtro de la query a
-   `filter(fn: (r) => r.sensor_id == "sensor2")`.
+   crearlos para el segundo sensor, usa el script ya preparado para
+   ello (ver `docs/MANUAL-EXPERTO.md`, sección 7.3):
+
+````bash
+   python3 scripts/anadir_sensor_dashboard.py sensor2 "Sensor 2"
+   docker compose restart grafana
+```
 
    Las reglas de alerta **no** necesitan tocarse — ver sección 10.
 
