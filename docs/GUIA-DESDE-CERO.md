@@ -703,7 +703,8 @@ echo "PI_HOST=tuusuario@IP_DE_LA_PI" >> .env
 | `tiempo de espera agotado resolviendo servicios BLE del sensor ...` | Normal en el primer ciclo tras un reinicio del host (BlueZ redescubre el sensor desde cero). Si persiste en ciclos posteriores, sube `timeout_conexion_segundos` en `config.yaml`. |
 | `Method "Get"/"Connect" ... doesn't exist` (error de D-Bus) | Bug de compatibilidad conocido de BlueZ reciente con ciertas librerías BLE — por eso el colector habla con BlueZ directamente (ver `docs/ARQUITECTURA.md`). Si aparece, `sudo systemctl restart bluetooth` y deja que el siguiente ciclo redescubra el sensor. |
 | El colector no arranca como servicio pero sí a mano con `sudo` | El usuario `cpdmonitor` no está en el grupo `bluetooth` (Fase 6.5), o hace falta `sudo systemctl daemon-reload` tras copiar el `.service`. |
-| Grafana no muestra datos pero el colector no da error | Revisa que `influxdb.org`/`influxdb.bucket` en `config.yaml` coincidan exactamente con `INFLUXDB_ORG`/`INFLUXDB_BUCKET` de `.env`. |
+| Grafana no muestra datos pero el colector no da error | Dos causas típicas: (1) `GRAFANA_INFLUXDB_TOKEN` no se creó bien en la Fase 7.2 — revisa que exista en `.env` y que `docker compose up -d --force-recreate grafana` se ejecutara después; (2) `influxdb.org`/`influxdb.bucket` en `config.yaml` no coinciden exactamente con `INFLUXDB_ORG`/`INFLUXDB_BUCKET` de `.env`. |
+| No llegan las alertas por email, o algo de Grafana (usuarios, dashboard, SMTP) no se comporta como esperabas | La Fase 12 cubre solo los problemas más básicos. Para diagnóstico detallado de Grafana/alertas/SMTP, consulta `docs/MANUAL-EXPERTO.md`, sección 9 ("Algo no funciona — diagnóstico rápido"). |
 | No sabes qué significa un mensaje de error | Cópialo tal cual (todo el texto) y pégamelo — dime también en qué fase estabas. |
 
 ---
