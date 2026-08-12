@@ -1,0 +1,285 @@
+# Manual de experto — CPD Monitor
+
+Este documento es la referencia única para **entender, usar, diagnosticar y
+modificar** el sistema de monitorización del CPD, sin necesitar
+conocimientos de programación. No hace falta leerlo entero: busca la
+sección que necesites.
+
+> 📄 Si necesitas el detalle técnico de por qué se construyó así (para
+> desarrolladores), consulta `docs/ARQUITECTURA.md`. Este manual es la
+> versión práctica, orientada a "¿qué hago si...?".
+
+---
+
+## Índice
+
+1. [Cómo funciona el sistema, en dos frases](#1-cómo-funciona-el-sistema-en-dos-frases)
+2. [Cómo leer el dashboard de Grafana](#2-cómo-leer-el-dashboard-de-grafana)
+3. [Qué hacer cuando llega un email de alerta](#3-qué-hacer-cuando-llega-un-email-de-alerta)
+4. [Cambiar quién recibe las alertas por email](#4-cambiar-quién-recibe-las-alertas-por-email)
+5. [Cambiar los rangos normales de temperatura/humedad](#5-cambiar-los-rangos-normales-de-temperaturahumedad)
+6. [Gestionar usuarios de Grafana (dar/quitar acceso)](#6-gestionar-usuarios-de-grafana-darquitar-acceso)
+7. [Añadir o quitar un sensor](#7-añadir-o-quitar-un-sensor)
+8. [Mantenimiento básico (reiniciar, ver logs)](#8-mantenimiento-básico-reiniciar-ver-logs)
+9. [Algo no funciona — diagnóstico rápido](#9-algo-no-funciona--diagnóstico-rápido)
+10. [Dónde está todo (referencia rápida)](#10-dónde-está-todo-referencia-rápida)
+11. [Glosario](#11-glosario)
+
+---
+
+## 1. Cómo funciona el sistema, en dos frases
+
+Dos sensores Bluetooth miden temperatura y humedad del CPD. Un programa en
+la Raspberry Pi los lee cada minuto y guarda los datos; Grafana los dibuja
+en gráficas y avisa por email si algo se sale de rango.
+
+```
+Sensor Bluetooth → Raspberry Pi (colector) → Base de datos → Grafana → Tú
+```
+
+Todo corre **dentro de la Raspberry Pi** (IP `192.168.99.82` en tu red
+local) — no depende de ningún servicio externo ni de internet, salvo para
+mandar los emails de alerta.
+
+---
+
+## 2. Cómo leer el dashboard de Grafana
+
+Entra en `http://192.168.99.82:3000` desde cualquier navegador de la red
+local. Usuarios disponibles:
+
+| Usuario | Para qué sirve |
+|---|---|
+| `admin` | Gestionar el sistema (editar, borrar, configurar). Contraseña en `.env` → `GRAFANA_ADMIN_PASSWORD`. |
+| `visor` | Solo ver las gráficas, sin poder tocar nada. Para dar acceso a quien solo necesite consultar. Contraseña en `.env` → `GRAFANA_VIEWER_PASSWORD`. |
+
+Abre el dashboard **"CPD - Temperatura y Humedad"**. Los paneles:
+
+- **Temperatura (°C) / Humedad relativa (%H)** — gráficas de las últimas
+  24h. Si hay dos sensores, cada uno aparece como una línea de color
+  distinto (mira la leyenda debajo de cada gráfica).
+- **Temperatura actual / Humedad actual / Batería — Sensor 1** — el
+  último valor de ese sensor concreto, con colores: **verde** = normal,
+  **naranja** = acercándose al límite, **rojo** = fuera de rango.
+- Si añades un segundo sensor, tendrá sus propios tres paneles
+  "— Sensor 2" (ver sección 7).
+
+---
+
+## 3. Qué hacer cuando llega un email de alerta
+
+El asunto empieza siempre con:
+
+- **🔴 ALERTA** → algo está fuera de rango ahora mismo.
+- **🟢 RESUELTA** → ya ha vuelto a rango normal por sí solo. No requiere
+  ninguna acción, es solo confirmación de que se arregló.
+
+Cuando llegue un **🔴 ALERTA**:
+
+1. Mira el cuerpo del correo: te dice el sensor, la ubicación, el valor
+   exacto y desde cuándo.
+2. Entra en el dashboard (enlace incluido en el propio correo) para ver
+   si es un pico puntual o una tendencia sostenida.
+3. Si puedes, revisa físicamente el CPD (¿puerta abierta, aire
+   acondicionado apagado, algo bloqueando la ventilación?).
+4. Si en unos minutos no llega el **🟢 RESUELTA**, el problema sigue
+   activo — actúa según lo que hayas visto en el paso 3, o avisa a
+   alguien que pueda intervenir físicamente en el CPD.
+
+**Si llega una alerta sin ningún valor** (o el asunto menciona
+"sin datos"): no es un problema de temperatura, es que **el propio
+colector ha dejado de mandar datos** — ver sección 9, "No llegan datos al
+dashboard".
+
+---
+
+## 4. Cambiar quién recibe las alertas por email
+
+Conéctate a la Raspberry Pi por SSH y edita un solo fichero:
+
+```bash
+ssh cpd@192.168.99.82
+cd ~/cpd-monitor
+nano grafana/provisioning/alerting/contactpoints.yaml
+```
+
+Busca la línea que empieza por `addresses:` — tiene todos los correos
+separados por `;`. Añade, quita o cambia direcciones ahí, por ejemplo:
+
+```yaml
+addresses: "monitorizacion@nubecao.com;apajares@nubecao.com;nueva-persona@nubecao.com"
+```
+
+Guarda (`Ctrl+O`, `Enter`, `Ctrl+X`) y aplica el cambio:
+
+```bash
+docker compose up -d --force-recreate grafana
+```
+
+Prueba que llega bien: en Grafana → **Alerting → Contact points →
+`email-cpd` → Test**.
+
+> No olvides hacer commit del cambio (ver sección 8) para que quede
+> guardado también en GitHub.
+
+---
+
+## 5. Cambiar los rangos normales de temperatura/humedad
+
+Esto se edita desde la propia interfaz de Grafana, no hace falta tocar
+ficheros:
+
+1. Entra como `admin` → **Alerting → Alert rules**.
+2. Abre la regla que quieras cambiar ("Temperatura CPD fuera de rango" o
+   "Humedad CPD fuera de rango").
+3. En la sección de condiciones (Threshold), cambia los números `18` y
+   `27` (temperatura) o `40` y `60` (humedad) por los que necesites.
+4. Baja hasta el final y pulsa **"Save rule and exit"**.
+
+Los colores del dashboard (verde/naranja/rojo) son independientes y viven
+en `grafana/dashboards/cpd-temp-humedad.json` — si quieres que coincidan
+exactamente con los nuevos rangos, pide ayuda técnica para ese fichero en
+concreto (es más delicado de editar a mano).
+
+---
+
+## 6. Gestionar usuarios de Grafana (dar/quitar acceso)
+
+**Dar acceso de solo ver a alguien nuevo** — como `admin`, en Grafana:
+
+1. **Administration → Users and access → Users → New user**.
+2. Rellena nombre, usuario, contraseña.
+3. Una vez creado, entra en ese usuario y ponle el rol **Viewer** (no
+   Editor ni Admin, salvo que de verdad necesite poder editar).
+
+**Cambiar una contraseña** (incluida la de `admin`): mismo menú,
+selecciona el usuario → **Change password**.
+
+**Quitar acceso a alguien**: mismo menú → selecciona el usuario →
+**Delete user**.
+
+---
+
+## 7. Añadir o quitar un sensor
+
+Procedimiento completo cuando llegue el segundo sensor físico (o
+cualquier sensor adicional en el futuro). No hace falta recompilar nada.
+
+### 7.1 — Encuentra la MAC del sensor nuevo
+
+Con el sensor encendido y cerca de la Raspberry Pi:
+
+```bash
+ssh cpd@192.168.99.82
+bluetoothctl
+scan on
+```
+
+Espera a ver su nombre (algo como `SHT40 Gadget`) y anota la dirección
+tipo `AA:BB:CC:DD:EE:FF`. Luego:
+
+```
+scan off
+exit
+```
+
+### 7.2 — Añádelo a la configuración
+
+```bash
+cd ~/cpd-monitor
+nano config.yaml
+```
+
+Añade un bloque nuevo bajo `sensores:` (respeta la sangría exacta):
+
+```yaml
+  - id: "sensor2"
+    mac: "AA:BB:CC:DD:EE:FF"
+    ubicacion: "Sensor 2"
+```
+
+Guarda y despliega:
+
+```bash
+sudo cp config.yaml /opt/cpd-monitor/config.yaml
+sudo chown cpdmonitor:cpdmonitor /opt/cpd-monitor/config.yaml
+sudo systemctl restart cpd-monitor
+journalctl -u cpd-monitor -f
+```
+
+Deberías ver una línea por sensor cada minuto. `Ctrl+C` para salir.
+
+### 7.3 — Añade sus paneles de "valor actual" en Grafana
+
+Las gráficas grandes (Temperatura, Humedad) **ya muestran el sensor
+nuevo solas**, sin tocar nada. Los tres paneles pequeños de "Sensor 1"
+hay que duplicarlos: en el dashboard, entra en modo edición, copia
+"Temperatura actual — Sensor 1" (menú `⋮` → Copy), pégalo, y en el panel
+copiado cambia el título a "— Sensor 2" y, en su query, el filtro
+`sensor_id == "sensor1"` por `sensor_id == "sensor2"`. Repite con los
+otros dos paneles. Guarda el dashboard.
+
+### 7.4 — Las alertas no requieren ningún cambio
+
+Las reglas de alerta ya cubren automáticamente cualquier sensor que
+exista — no hay que crear reglas nuevas.
+
+---
+
+## 8. Mantenimiento básico (reiniciar, ver logs)
+
+Todo esto es seguro de ejecutar, no borra datos:
+
+| Quiero... | Comando (conectado por SSH a la Pi) |
+|---|---|
+| Ver qué está leyendo el colector ahora mismo | `journalctl -u cpd-monitor -f` (sal con `Ctrl+C`) |
+| Reiniciar el colector | `sudo systemctl restart cpd-monitor` |
+| Ver si el colector está bien | `sudo systemctl status cpd-monitor` |
+| Reiniciar Grafana | `docker compose restart grafana` (dentro de `~/cpd-monitor`) |
+| Reiniciar InfluxDB (la base de datos) | `docker compose restart influxdb` |
+| Reiniciar TODO (tras un corte de luz, etc.) | Simplemente enciende la Raspberry Pi — todo arranca solo |
+| Guardar un cambio de configuración en GitHub | `git add -A && git commit -m "describe aquí qué cambiaste"` y luego `git push` |
+
+---
+
+## 9. Algo no funciona — diagnóstico rápido
+
+| Síntoma | Probablemente | Qué hacer |
+|---|---|---|
+| No veo datos nuevos en el dashboard | El colector no está leyendo el sensor | `journalctl -u cpd-monitor -f` y mira el último error. Si dice "no se pudo conectar", acércate al sensor o revisa su batería. |
+| Me llega una alerta de "sin datos" | El colector está parado o la Pi tiene un problema | `sudo systemctl status cpd-monitor`. Si no está "active (running)", `sudo systemctl restart cpd-monitor`. |
+| No puedo entrar en Grafana | El contenedor está caído, o la Pi está apagada | Conéctate por SSH y prueba `docker compose ps`. Si `cpd-grafana` no aparece "Up", `docker compose up -d`. |
+| No me llegan alertas por email pero el dashboard sí tiene datos | Problema del servidor SMTP, no del colector | En Grafana → Alerting → Contact points → `email-cpd` → **Test**. Si falla, avisa a IT sobre la cuenta de correo `alertassensores@nubecao.com`. |
+| Nada de lo anterior funciona | — | Copia el mensaje de error exacto (de `journalctl` o de la pantalla) y pásalo a soporte técnico — con el error literal se resuelve mucho más rápido que describiéndolo de memoria. |
+
+---
+
+## 10. Dónde está todo (referencia rápida)
+
+| Qué | Dónde |
+|---|---|
+| Raspberry Pi (IP) | `192.168.99.82`, usuario SSH `cpd` |
+| Dashboard de Grafana | `http://192.168.99.82:3000` |
+| InfluxDB (rara vez hace falta entrar directamente) | `http://192.168.99.82:8086` |
+| Carpeta de trabajo del proyecto (en la Pi) | `~/cpd-monitor` |
+| Copia real que usa el servicio | `/opt/cpd-monitor` |
+| Todas las contraseñas y tokens | fichero `.env` dentro de `~/cpd-monitor` (nunca se sube a GitHub) |
+| Configuración de los sensores | `config.yaml` (tampoco se sube a GitHub) |
+| Repositorio en GitHub | `github.com/alexio9910/cpd-monitor` |
+
+> ⚠️ `.env` y `config.yaml` contienen contraseñas y tokens reales.
+> Nunca los compartas por email/chat ni los subas a ningún sitio público.
+
+---
+
+## 11. Glosario
+
+| Término | Qué es |
+|---|---|
+| Colector | El programa que lee los sensores cada minuto (corre como servicio en la Pi). |
+| InfluxDB | La base de datos donde se guarda el histórico de lecturas. |
+| Grafana | La web que dibuja las gráficas y manda las alertas. |
+| Contact point | En Grafana, a quién/cómo se envía una alerta (en nuestro caso, email). |
+| SMTP | El servidor de correo que Grafana usa para poder enviar emails. |
+| BLE / Bluetooth Low Energy | El tipo de Bluetooth de bajo consumo que usan los sensores Sensirion. |
+| Systemd / servicio | El mecanismo de Linux que arranca el colector solo y lo reinicia si falla. |

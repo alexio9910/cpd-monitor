@@ -11,6 +11,7 @@ visualización en **Grafana**, todo autoalojado.
 > [`docs/GUIA-DESDE-CERO.md`](docs/GUIA-DESDE-CERO.md).
 
 📄 Guía completa para principiantes, de cero a producción: [`docs/GUIA-DESDE-CERO.md`](docs/GUIA-DESDE-CERO.md)
+📄 **Manual de experto — usar, diagnosticar y modificar el sistema ya en marcha:** [`docs/MANUAL-EXPERTO.md`](docs/MANUAL-EXPERTO.md)
 📄 Decisiones de diseño y por qué se ha elegido cada pieza: [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
 📄 Ideas para evolucionar el proyecto: [`docs/MEJORAS-FUTURAS.md`](docs/MEJORAS-FUTURAS.md)
 
@@ -465,6 +466,7 @@ cpd-monitor/
 ├── deploy.sh                     # actualiza y reinicia todo en la Raspberry Pi
 ├── docs/
 │   ├── GUIA-DESDE-CERO.md        # guía completa para principiantes
+│   ├── MANUAL-EXPERTO.md         # manual de uso, diagnóstico y modificación
 │   ├── ARQUITECTURA.md
 │   └── MEJORAS-FUTURAS.md
 └── .github/workflows/build.yml   # CI: compila y valida en cada push
