@@ -23,7 +23,8 @@ sección que necesites.
 8. [Mantenimiento básico (reiniciar, ver logs)](#8-mantenimiento-básico-reiniciar-ver-logs)
 9. [Algo no funciona — diagnóstico rápido](#9-algo-no-funciona--diagnóstico-rápido)
 10. [Dónde está todo (referencia rápida)](#10-dónde-está-todo-referencia-rápida)
-11. [Glosario](#11-glosario)
+11. [Configurar una IP fija para la Raspberry Pi](#11-configurar-una-ip-fija-para-la-raspberry-pi)
+12. [Glosario](#12-glosario)
 
 ---
 
@@ -285,7 +286,89 @@ Todo esto es seguro de ejecutar, no borra datos:
 
 ---
 
-## 11. Glosario
+## 11. Configurar una IP fija para la Raspberry Pi
+
+Por defecto, la Raspberry Pi recibe una IP asignada automáticamente por tu
+router (DHCP), que **puede cambiar** con el tiempo (por ejemplo, tras un
+corte de luz largo o un reinicio del router). Si cambia, dejan de
+funcionar: el enlace al dashboard que llevan los emails de alerta, el
+acceso por SSH que tengas guardado, y `deploy.sh`. Conviene fijarla en
+cuanto el sistema pase a producción de verdad.
+
+Dos formas de hacerlo — elige la que puedas usar:
+
+### Opción A — Reserva de IP en el router (recomendada)
+
+La Pi sigue "hablando" DHCP con normalidad (cero riesgo de quedarse sin
+red por una mala configuración local); simplemente le dices al router
+"a este dispositivo dale siempre la misma IP".
+
+1. Averigua la dirección MAC de la Raspberry Pi:
+```bash
+   ip link show eth0   # para conexión por cable
+   ip link show wlan0  # para wifi
+```
+   Busca la línea `link/ether AA:BB:CC:DD:EE:FF` — esa es la MAC.
+2. Entra en la web de administración de tu router (normalmente algo como
+   `192.168.1.1` o `192.168.0.1` en el navegador).
+3. Busca una sección "DHCP", "Reserva de IP" o "Static Leases" (el
+   nombre exacto varía según la marca del router).
+4. Añade una reserva: la MAC de la Pi → la IP que quieras que tenga
+   siempre (lo más cómodo: la misma que ya tiene ahora, para no tener
+   que cambiar nada más después).
+5. Guarda y reinicia la Raspberry Pi.
+
+> Si la red la gestiona el departamento de IT de la empresa y no tienes
+> acceso al router, pídeles directamente esta reserva — es la opción más
+> limpia y no requiere tocar nada en la Pi.
+
+### Opción B — IP fija configurada en la propia Raspberry Pi
+
+Si no puedes tocar el router. Las versiones actuales de Raspberry Pi OS
+gestionan la red con **NetworkManager** — la guía antigua de editar
+`/etc/dhcpcd.conf` ya no funciona en instalaciones recientes.
+
+```bash
+ssh cpd@IP_DE_TU_RASPBERRY
+nmcli con show
+```
+Anota el nombre exacto de tu conexión (algo como `Wired connection 1`
+para cable, o el nombre de tu red wifi).
+
+```bash
+sudo nmcli con mod "Wired connection 1" \
+  ipv4.addresses IP_QUE_QUIERAS/24 \
+  ipv4.gateway IP_DE_TU_ROUTER \
+  ipv4.dns IP_DE_TU_ROUTER \
+  ipv4.method manual
+
+sudo nmcli con up "Wired connection 1"
+```
+Sustituye `"Wired connection 1"` por el nombre real del paso anterior,
+`IP_QUE_QUIERAS` por la IP fija deseada (ej. `192.168.1.50`), y
+`IP_DE_TU_ROUTER` por la IP de tu router (normalmente termina en `.1`).
+
+Comprueba que se aplicó:
+```bash
+ip a show eth0
+```
+
+### Después de fijar la IP
+
+Si la IP nueva es distinta a la que tenías, actualiza:
+
+- `GRAFANA_PUBLIC_URL` en `.env` (el enlace de los emails de alerta):
+```bash
+  nano .env   # cambia GRAFANA_PUBLIC_URL=http://IP_ANTIGUA:3000
+  docker compose up -d --force-recreate grafana
+```
+- `PI_HOST` en el `.env` de tu WSL, si usas `deploy.sh`.
+- Cualquier acceso directo o gestor de contraseñas apuntando a la IP
+  antigua.
+
+---
+
+## 12. Glosario
 
 | Término | Qué es |
 |---|---|
