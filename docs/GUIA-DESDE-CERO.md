@@ -259,13 +259,22 @@ cp .env.example .env
 nano .env
 ```
 
-En el editor `nano` (se navega con las flechas), rellena:
+En el editor `nano` (se navega con las flechas), rellena por ahora:
 - `INFLUXDB_ADMIN_PASSWORD`: una contraseña que te inventes.
 - `INFLUXDB_ADMIN_TOKEN`: genera uno con `openssl rand -hex 32` en otra
   terminal y pégalo aquí.
 - `GRAFANA_ADMIN_PASSWORD`: otra contraseña que te inventes.
 
+Deja `GRAFANA_INFLUXDB_TOKEN` y `GRAFANA_VIEWER_PASSWORD` en blanco — se
+rellenan solos en el paso 7.2, porque necesitan datos que todavía no
+existen. Si no vas a configurar alertas por email ahora mismo, deja
+también en blanco `GRAFANA_SMTP_*`, `GRAFANA_ALERT_EMAILS` y
+`GRAFANA_ORG_NAME` — Grafana arranca igual sin ellas (ver Fase 10.7 para
+configurarlas más adelante).
+
 Guarda con `Ctrl+O`, `Enter`, y sal con `Ctrl+X`.
+
+### 7.1 — Levantar los contenedores
 
 ```bash
 docker compose up -d
@@ -273,6 +282,43 @@ docker compose ps
 ```
 
 Deberías ver `cpd-influxdb` y `cpd-grafana` con estado "running"/"Up".
+
+### 7.2 — Crear un token de InfluxDB de solo lectura para Grafana (obligatorio)
+
+Grafana necesita un token para leer los datos de InfluxDB. **No uses el
+token de administrador para esto** — le daría permisos de sobra (borrar
+buckets, crear usuarios...) que no necesita solo para dibujar gráficas.
+Creamos uno aparte, limitado a **solo lectura** del bucket de este
+proyecto:
+
+```bash
+ADMIN_TOKEN=$(grep '^INFLUXDB_ADMIN_TOKEN=' .env | cut -d'=' -f2)
+ORG=$(grep '^INFLUXDB_ORG=' .env | cut -d'=' -f2)
+BUCKET=$(grep '^INFLUXDB_BUCKET=' .env | cut -d'=' -f2)
+
+BUCKET_ID=$(docker exec cpd-influxdb influx bucket list --org "$ORG" --token "$ADMIN_TOKEN" --hide-headers | awk -v b="$BUCKET" '$2==b {print $1}')
+
+GRAFANA_TOKEN=$(docker exec cpd-influxdb influx auth create \
+  --org "$ORG" --token "$ADMIN_TOKEN" \
+  --read-bucket "$BUCKET_ID" \
+  --description "grafana-solo-lectura" \
+  --json | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+
+echo "GRAFANA_INFLUXDB_TOKEN=${GRAFANA_TOKEN}" >> .env
+echo "Token creado y guardado en .env"
+```
+
+Y recreamos Grafana para que lo recoja:
+
+```bash
+docker compose up -d --force-recreate grafana
+docker compose ps
+```
+
+> ⚠️ Sin este paso, Grafana arranca sin dar ningún error, pero **el
+> dashboard no mostrará ningún dato**. Es la causa más común de
+> "Grafana está vacío" en una instalación nueva — si te pasa, revisa que
+> este paso se ejecutó bien.
 
 ---
 
@@ -435,6 +481,129 @@ paneles de temperatura, humedad y batería — sin tocar nada en Grafana.
 > 💡 `config.yaml` contiene tu token real de InfluxDB y está en
 > `.gitignore` — nunca se sube a GitHub. Añadir un sensor así es un cambio
 > puramente local en el host, sin necesidad de hacer commit ni push.
+
+---
+
+## Fase 10.6 — Usuario de solo visualización en Grafana (recomendado)
+
+Para dar acceso a alguien que solo necesite **ver** el dashboard, sin
+poder editar ni tocar configuración (por ejemplo, un cliente o un
+compañero), crea un segundo usuario en Grafana con rol *Viewer*:
+
+```bash
+cd ~/cpd-monitor
+GRAFANA_ADMIN_USER=$(grep '^GRAFANA_ADMIN_USER=' .env | cut -d'=' -f2)
+GRAFANA_ADMIN_PASSWORD=$(grep '^GRAFANA_ADMIN_PASSWORD=' .env | cut -d'=' -f2)
+VIEWER_PASSWORD=$(openssl rand -base64 18)
+
+RESPUESTA=$(curl -s -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+  -X POST http://localhost:3000/api/admin/users \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Visor CPD\",\"login\":\"visor\",\"password\":\"${VIEWER_PASSWORD}\",\"email\":\"visor@cpd.local\"}")
+
+VISOR_ID=$(echo "$RESPUESTA" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
+
+curl -s -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+  -X PATCH "http://localhost:3000/api/org/users/${VISOR_ID}" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"Viewer"}'
+
+echo "GRAFANA_VIEWER_PASSWORD=${VIEWER_PASSWORD}" >> .env
+echo
+echo "Usuario: visor | Contraseña: ${VIEWER_PASSWORD}"
+```
+
+Usuario `visor`, contraseña guardada también en `.env`. Pruébalo en una
+ventana de incógnito: debería poder ver el dashboard pero no editar nada.
+
+---
+
+## Fase 10.7 — Alertas por email (recomendado)
+
+Que Grafana te avise por email cuando la temperatura o humedad se salgan
+de rango normal. Necesitas los datos de un servidor SMTP (de tu empresa,
+o un proveedor como Gmail con contraseña de aplicación).
+
+### 10.7.1 — Configura el SMTP y los destinatarios
+
+```bash
+nano .env
+```
+
+Rellena (si no lo hiciste ya en la Fase 7):
+- `GRAFANA_SMTP_HOST`: servidor y puerto, ej. `smtp.tuempresa.com:587`
+- `GRAFANA_SMTP_USER` / `GRAFANA_SMTP_PASSWORD`: credenciales de esa
+  cuenta de correo
+- `GRAFANA_SMTP_FROM_ADDRESS`: dirección que aparecerá como remitente
+- `GRAFANA_ALERT_EMAILS`: a quién avisar, varias direcciones separadas
+  por `;` (ej. `"persona1@empresa.com;persona2@empresa.com"`)
+- `GRAFANA_PUBLIC_URL`: la URL desde la que se accede al dashboard (ej.
+  `http://IP_DE_TU_RASPBERRY:3000`) — se usa como enlace dentro del email
+- `GRAFANA_ORG_NAME`: el nombre que quieras que aparezca al pie del email
+
+Guarda y aplica:
+
+```bash
+docker compose up -d --force-recreate grafana
+```
+
+En Grafana → **Alerting → Contact points → `email-cpd` → Test**, y
+confirma que te llega un correo de prueba a las direcciones que pusiste.
+
+### 10.7.2 — Crea las dos reglas de alerta
+
+Desde la interfaz (no por fichero, para poder revisarlas con calma):
+**Alerting → Alert rules → New alert rule**. Repite dos veces, con estos
+valores:
+
+| | Temperatura | Humedad |
+|---|---|---|
+| Nombre | Temperatura CPD fuera de rango | Humedad CPD fuera de rango |
+| Datasource / query | `InfluxDB-CPD`, campo `temperatura_c` | `InfluxDB-CPD`, campo `humedad_rel_pct` |
+| Condición (Threshold) | IS BELOW 18 OR IS ABOVE 27 | IS BELOW 40 OR IS ABOVE 60 |
+
+Para ambas, en **"Definir comportamiento de evaluación"**:
+- Grupo de evaluación: crea uno nuevo, ej. "Monitorizacion-CPD", cada
+  **10s** (el mínimo que permite Grafana).
+- **Periodo pendiente**: `Ninguno` (avisa al instante, sin esperar
+  confirmación de un segundo ciclo).
+- **Seguir activando durante**: `Ninguno` (el email de "resuelto" llega
+  también al instante en cuanto vuelve a rango).
+- **Estado si no hay datos**: `Alerting` (para que un colector caído
+  también dispare un aviso).
+- **Estado en caso de error**: `Alerting` (igual, para fallos de consulta
+  a InfluxDB).
+
+Guarda cada regla con el botón final **"Save rule and exit"** — es fácil
+quedarse a medias si solo se cambian los campos sin pulsar este botón.
+
+Consulta Flux de referencia para ambas reglas (cambia solo el `_field`):
+
+```
+from(bucket: "cpd_monitorizacion")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "cpd_ambiente")
+  |> filter(fn: (r) => r._field == "temperatura_c")
+  |> last()
+  |> keep(columns: ["_time", "_value", "sensor_id", "ubicacion"])
+```
+
+> 📄 Para cambiar quién recibe las alertas más adelante, o si algo no
+> llega, consulta `docs/MANUAL-EXPERTO.md` (secciones 3 y 4).
+
+---
+
+## Fase 10.8 — IP fija para la Raspberry Pi (recomendado en producción)
+
+Por defecto, la IP de la Pi puede cambiar con el tiempo (reinicio del
+router, corte de luz...) — si cambia, dejan de funcionar el enlace de los
+emails de alerta, tus accesos SSH guardados, y `deploy.sh`. Antes de dar
+el proyecto por definitivo, fíjala.
+
+Los pasos completos (dos opciones: reserva en el router, o `nmcli`
+directamente en la Pi) están en `docs/MANUAL-EXPERTO.md`, sección 11 —
+para no duplicar la misma explicación en dos sitios distintos y que se
+desincronicen con el tiempo.
 
 ---
 
