@@ -179,13 +179,48 @@ ficheros ahí. 🎉
 
 ## Fase 5 — Identificar tus sensores Bluetooth
 
-1. Enciende cada sensor Sensirion SHT4x Smart Gadget.
-2. Instala la app **nRF Connect** en tu móvil (Android o iOS, gratuita).
-3. Pulsa **Scan**, busca el dispositivo (algo como "SHT4x Smart Gadget") y
-   anota su **dirección MAC** (formato `AA:BB:CC:DD:EE:FF`).
-4. Repite con el segundo sensor. Pega una pegatina física a cada uno
-   indicando dónde lo vas a instalar (te hará falta el nombre del sitio en
-   el siguiente paso).
+Hay dos formas de conseguir la dirección MAC de cada sensor. Elige la que
+te resulte más cómoda.
+
+### Opción A — con el móvil, usando nRF Connect (solo Android)
+
+1. Enciende el sensor Sensirion SHT4x Smart Gadget.
+2. Instala la app **nRF Connect** en tu móvil (gratuita).
+3. Pulsa **Scan**, busca el dispositivo (algo como "SHT4x Smart Gadget" o
+   "SHT40 Gadget") y anota su **dirección MAC** (formato
+   `AA:BB:CC:DD:EE:FF`).
+
+> ⚠️ **Si usas iPhone, esta opción no funciona**: iOS oculta la dirección
+> MAC real a todas las apps (restricción de privacidad de Apple), ni
+> siquiera nRF Connect la puede leer ahí. Usa la Opción B.
+
+### Opción B — escaneando desde la propia Raspberry Pi (recomendada)
+
+Esta opción necesita que ya hayas instalado `bluez` en la Pi (Fase 6.3, un
+poco más abajo) — si todavía no has llegado ahí, completa primero la Fase
+6 hasta el punto 6.3 y vuelve aquí.
+
+Con el sensor encendido y cerca de la Pi:
+
+```bash
+ssh pi@IP_DE_LA_RASPBERRY   # o el usuario que hayas configurado
+bluetoothctl
+scan on
+```
+
+Espera 15-20 segundos y busca una línea con un nombre parecido a "SHT4x
+Smart Gadget" o "SHT40 Gadget" — la MAC aparece justo al lado. Luego:
+
+```
+scan off
+exit
+```
+
+### En ambos casos
+
+Repite con el segundo sensor (si ya lo tienes) y pega una pegatina física
+a cada uno indicando dónde lo vas a instalar (te hará falta ese nombre de
+sitio más adelante, para `ubicacion` en la configuración).
 
 ---
 
@@ -471,12 +506,27 @@ por primera vez), igual que pasó con el primero.
 
 Sal con `Ctrl+C` cuando lo confirmes (el servicio sigue corriendo igual).
 
-### 5. Grafana no necesita ningún cambio
+### 5. Añade los paneles del sensor nuevo en Grafana
 
-El dashboard **"CPD - Temperatura y Humedad"** agrupa las series por
-`sensor_id`/`ubicacion`, así que en cuanto InfluxDB reciba datos del nuevo
-sensor, aparecerá automáticamente como una línea adicional en los mismos
-paneles de temperatura, humedad y batería — sin tocar nada en Grafana.
+Las dos gráficas grandes (Temperatura, Humedad) agrupan las series por
+`sensor_id`/`ubicacion`, así que el sensor nuevo aparece solo en ellas,
+como una línea adicional — sin tocar nada.
+
+Los tres paneles pequeños de "valor actual" (Temperatura, Humedad,
+Batería) sí hay que crearlos para el sensor nuevo — con un script ya
+preparado para ello, sin tocar la interfaz de Grafana a mano:
+
+```bash
+cd ~/cpd-monitor
+python3 scripts/anadir_sensor_dashboard.py sensor2 "Sensor 2"
+docker compose restart grafana
+```
+
+El primer argumento es el mismo `id` que pusiste en `config.yaml`; el
+segundo, el texto que quieres que aparezca en el título de los paneles.
+Sirve igual para un tercer sensor, un cuarto, etc. — y es seguro
+ejecutarlo dos veces por error: si detecta que ya existen los paneles de
+ese sensor, no hace nada.
 
 > 💡 `config.yaml` contiene tu token real de InfluxDB y está en
 > `.gitignore` — nunca se sube a GitHub. Añadir un sensor así es un cambio
@@ -627,9 +677,19 @@ Y luego, para llevarlo a producción:
 ./deploy.sh
 ```
 
-Ese script se conecta por SSH a la Pi, baja los cambios (`git pull`), reconstruye lo necesario y reinicia el servicio — todo en un solo comando. La
-primera vez, edita `deploy.sh` y cambia `tuusuario@IP_DE_LA_PI` por tus
-datos reales, y haz commit de ese cambio.
+Ese script se conecta por SSH a la Pi, baja los cambios (`git pull`), reconstruye lo necesario y reinicia el servicio — todo en un solo comando.
+
+`deploy.sh` **no lleva la IP de la Pi escrita dentro** (así nunca queda
+expuesta en un repositorio público) — la lee de una variable `PI_HOST` en
+tu `.env` **local, de tu WSL** (uno distinto al `.env` de la Pi, que no
+tiene por qué llevar las mismas variables). La primera vez:
+
+```bash
+echo "PI_HOST=tuusuario@IP_DE_LA_PI" >> .env
+```
+
+(sustituye por tu usuario e IP reales). Como `.env` está en
+`.gitignore`, este paso **no requiere ningún commit**.
 
 ---
 
