@@ -443,8 +443,12 @@ hora local, no con UTC.
 
 - No subas nunca `config.yaml` ni `.env` reales a GitHub (ya están en
   `.gitignore`; revísalo si renombras algo).
-- Sustituye el token de administrador de InfluxDB en Grafana por uno de
-  solo lectura limitado al bucket (ver `docs/MEJORAS-FUTURAS.md`).
+- ✅ El datasource de Grafana usa un token de InfluxDB de **solo
+  lectura** (`GRAFANA_INFLUXDB_TOKEN`), no el de administrador — ver
+  `docs/MANUAL-EXPERTO.md` sección 6.
+- ✅ Existe un usuario `visor` en Grafana (rol Viewer) para dar acceso de
+  solo consulta sin poder editar ni configurar nada — ver
+  `docs/MANUAL-EXPERTO.md` sección 6.
 - Si vas a acceder a Grafana desde fuera de la red local, ponlo detrás de
   un proxy inverso con HTTPS (por ejemplo Caddy o Nginx + Let's Encrypt) en
   vez de exponer el puerto 3000 directamente.
@@ -458,12 +462,17 @@ cpd-monitor/
 ├── cmd/collector/main.go        # punto de entrada del colector
 ├── internal/
 │   ├── config/                  # carga de config.yaml
-│   ├── sensor/                  # lectura BLE del Sensirion Smart Gadget
+│   ├── sensor/                  # lectura BLE (habla con BlueZ por D-Bus)
 │   └── store/                   # escritura en InfluxDB
+├── scripts/
+│   └── anadir_sensor_dashboard.py  # añade los paneles de un sensor nuevo
 ├── config.example.yaml
 ├── docker-compose.yml           # InfluxDB + Grafana
 ├── grafana/
-│   ├── provisioning/            # datasource y proveedor de dashboards
+│   ├── provisioning/
+│   │   ├── datasources/          # datasource InfluxDB (token solo lectura)
+│   │   ├── dashboards/           # proveedor del dashboard
+│   │   └── alerting/             # contact point (email) y política
 │   └── dashboards/               # JSON del dashboard
 ├── deploy/systemd/               # unidad systemd del colector
 ├── deploy.sh                     # actualiza y reinicia todo en la Raspberry Pi

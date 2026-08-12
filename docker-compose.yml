@@ -9,6 +9,8 @@
 
 services:
   influxdb:
+    # Versión fija (nunca "latest"): evita que un simple reinicio del
+    # contenedor cambie de versión sin que te des cuenta.
     image: influxdb:2.7
     container_name: cpd-influxdb
     restart: unless-stopped
@@ -26,6 +28,11 @@ services:
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
 
   grafana:
+    # Usamos "grafana/grafana" (no "grafana/grafana-oss"): ese segundo
+    # repositorio dejó de actualizarse a partir de la 12.4.0. Comprueba
+    # https://hub.docker.com/r/grafana/grafana/tags si quieres una
+    # versión más reciente, y fija siempre un número concreto (nunca
+    # "latest").
     image: grafana/grafana:13.0.2
     container_name: cpd-grafana
     restart: unless-stopped
