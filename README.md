@@ -328,13 +328,97 @@ El colector no necesita recompilarse para añadir sensores: basta con editar
    sensor puede tardar un poco más en su primer ciclo, por el mismo motivo
    que el primero: BlueZ tiene que descubrirlo y resolver su árbol GATT).
 
-5. En Grafana no hay que tocar nada: el dashboard ya agrupa por
-   `sensor_id`/`ubicacion`, así que el segundo sensor aparece
-   automáticamente como una línea/serie nueva en los mismos paneles.
+5. Los dos paneles de gráfica (Temperatura, Humedad relativa) no
+   necesitan ningún cambio: agrupan por `sensor_id`/`ubicacion`, así que
+   el segundo sensor aparece solo como una línea nueva.
+
+   Los tres paneles de "valor actual" (Temperatura actual, Humedad
+   actual, Batería) sí están filtrados a propósito a un sensor concreto
+   (para que muestren un número, no una mezcla ambigua de varios). Para
+   el segundo sensor, duplica esos tres paneles en el JSON del dashboard
+   (`grafana/dashboards/cpd-temp-humedad.json`), cambiando el título a
+   "— Sensor 2" y el filtro de la query a
+   `filter(fn: (r) => r.sensor_id == "sensor2")`.
+
+   Las reglas de alerta **no** necesitan tocarse — ver sección 10.
 
 > `config.yaml` contiene tu token real de InfluxDB y nunca se sube a
 > GitHub — este procedimiento no requiere ningún commit ni push, solo
 > tocar el fichero local del host.
+
+---
+
+## 10. Seguridad y alertas
+
+### Usuarios de Grafana
+
+- **`admin`**: control total (edición de dashboards, datasources, usuarios). Es
+  el que usas tú para administrar.
+- **`visor`**: rol *Viewer* — puede ver dashboards y consultar datos, pero no
+  puede editar ni borrar nada ni tocar la configuración. Pensado para dar
+  acceso a un cliente o a cualquiera que solo necesite consultar las
+  gráficas. Contraseña guardada en `.env` (`GRAFANA_VIEWER_PASSWORD`).
+
+### Token de InfluxDB de solo lectura
+
+El datasource de Grafana **no** usa el token de administrador de InfluxDB
+(que sí usa el colector para escribir) — usa un token aparte
+(`GRAFANA_INFLUXDB_TOKEN` en `.env`), creado con `influx auth create
+--read-bucket`, con permiso **únicamente** de lectura sobre el bucket
+`cpd_monitorizacion`. Así, nadie con acceso a Grafana (ni siquiera un
+`admin` de Grafana comprometido) podría borrar el bucket de datos ni crear
+usuarios nuevos en InfluxDB.
+
+### Alertas por email
+
+Configuradas dos reglas en Alerting → Alert rules (creadas desde la
+interfaz, no por fichero, para poder ajustarlas con margen de prueba):
+
+| Regla | Condición | Rango |
+|---|---|---|
+| Temperatura CPD fuera de rango | `temperatura_c` fuera de rango | 18-27 °C (orientativo ASHRAE TC9.9) |
+| Humedad CPD fuera de rango | `humedad_rel_pct` fuera de rango | 40-60 %HR |
+
+Ambas reglas están pensadas para avisar **lo antes posible** y cubrir tres
+situaciones distintas, todas por email a las direcciones configuradas en
+el contact point `email-cpd`:
+
+1. **Sale de rango** → aviso inmediato (Periodo pendiente = Ninguno).
+2. **Vuelve a rango** → aviso automático de "RESUELTA" (Seguir activando
+   durante = Ninguno), sin lógica adicional: es el comportamiento nativo
+   de Grafana al detectar que una alerta activa deja de cumplirse.
+3. **El colector deja de mandar datos, o InfluxDB falla al consultar** →
+   ambos casos configurados como `Alerting` en "Configurar la gestión de
+   errores y falta de datos", así que un colector caído (Bluetooth roto,
+   servicio parado, Pi apagada...) también dispara un aviso, sin depender
+   de inferirlo por la ausencia de otro correo.
+
+El grupo de evaluación (`Monitorizacion-CPD`) evalúa cada 10 segundos (el
+mínimo permitido por Grafana), y la política de notificación
+(`grafana/provisioning/alerting/policies.yaml`) agrupa con
+`group_wait`/`group_interval` de 10s también, tanto para la alerta como
+para el aviso de "resuelta" — antes este segundo margen estaba en 1
+minuto por defecto y retrasaba el correo de vuelta a la normalidad. El
+cuello de botella real para la velocidad ya no está en Grafana, sino en
+el propio colector, que lee el sensor cada 60s: en la práctica, el email
+llega en cuestión de segundos tras el siguiente ciclo de lectura.
+
+La plantilla de email (en `contactpoints.yaml`) usa un formato reducido y
+legible de un vistazo — valor con su unidad, rango normal, hora local del
+evento (gracias a `TZ: Europe/Madrid`), enlace directo al dashboard — en
+vez del volcado técnico que usa Grafana por defecto
+(`{{ "{{ .ValueString }}" }}`).
+
+Las consultas Flux de ambas reglas **no filtran por sensor concreto** a
+propósito: al mantener `sensor_id`/`ubicacion` como columnas (`keep()`),
+InfluxDB devuelve una fila por sensor y Grafana evalúa cada una como una
+alerta independiente — es decir, **añadir un segundo sensor no requiere
+tocar las reglas de alerta**, se cubre automáticamente en cuanto empiece a
+escribir datos (ver sección 9).
+
+Grafana está configurado con `TZ: Europe/Madrid` (variable de entorno del
+contenedor) para que las horas de los emails de alerta coincidan con la
+hora local, no con UTC.
 
 ---
 

@@ -1,0 +1,25 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: email-cpd
+    receivers:
+      - uid: email-cpd-receiver
+        type: email
+        disableResolveMessage: false
+        settings:
+          addresses: "monitorizacion@nubecao.com;apajares@nubecao.com"
+          singleEmail: false
+          subject: >-
+            {{ if eq .Status "firing" }}🔴 ALERTA{{ else }}🟢 RESUELTA{{ end }} · {{ .CommonLabels.alertname }}
+          message: |-
+            {{ range .Alerts }}
+            {{ if eq .Status "firing" }}🔴 FUERA DE RANGO{{ else }}🟢 NORMALIZADO{{ end }}  —  {{ .Labels.ubicacion }} ({{ .Labels.sensor_id }})
+
+            Valor: {{ printf "%.1f" (index .Values "B") }}{{ if eq .Labels.alertname "Temperatura CPD fuera de rango" }}°C  (rango normal: 18-27°C){{ else }}%H  (rango normal: 40-60%H){{ end }}
+            {{ if eq .Status "firing" }}Desde: {{ .StartsAt.Local.Format "15:04" }}{{ else }}Resuelto: {{ .EndsAt.Local.Format "15:04" }}{{ end }} · {{ .StartsAt.Local.Format "02/01/2006" }}
+
+            📊 Ver dashboard: http://192.168.99.82:3000/d/cpd-temp-humedad
+            {{ end }}
+            —
+            CPD Monitor · Nubecao Sistemas

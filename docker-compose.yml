@@ -6,8 +6,6 @@
 # red en modo "host", lo que complica el proyecto sin aportar nada en un
 # primer despliegue. El colector se ejecuta como servicio systemd nativo
 # en el host (ver deploy/systemd/cpd-monitor.service y el README).
-# Contenerizarlo más adelante está recogido como mejora futura en
-# docs/MEJORAS-FUTURAS.md.
 
 services:
   influxdb:
@@ -28,10 +26,6 @@ services:
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
 
   grafana:
-    # Grafana OSS 13.x es la línea estable en el momento de escribir esto.
-    # Comprueba en https://hub.docker.com/r/grafana/grafana-oss/tags si hay
-    # una versión más reciente antes de desplegar en producción, y fija
-    # siempre una versión concreta (nunca "latest") para evitar sorpresas.
     image: grafana/grafana:13.0.2
     container_name: cpd-grafana
     restart: unless-stopped
@@ -44,11 +38,17 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      # Necesario para que el datasource provisionado pueda usar la
-      # variable ${INFLUXDB_ADMIN_TOKEN} (ver grafana/provisioning/datasources).
-      INFLUXDB_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+      GRAFANA_INFLUXDB_TOKEN: ${GRAFANA_INFLUXDB_TOKEN}
       INFLUXDB_ORG: ${INFLUXDB_ORG}
       INFLUXDB_BUCKET: ${INFLUXDB_BUCKET}
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST}
+      GF_SMTP_USER: ${GRAFANA_SMTP_USER}
+      GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM_ADDRESS}
+      GF_SMTP_FROM_NAME: "CPD Monitor Alertas"
+      GF_SMTP_STARTTLS_POLICY: "MandatoryStartTLS"
+      TZ: Europe/Madrid
     depends_on:
       - influxdb
 

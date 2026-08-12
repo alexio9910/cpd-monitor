@@ -5,16 +5,22 @@ versión 1 esté funcionando de forma estable.
 
 ## Alta prioridad, poco esfuerzo
 
-- **Alertas en Grafana.** Crear reglas de alerta (Alerting > Alert rules)
-  sobre las mismas consultas Flux del dashboard, con umbrales basados en el
-  rango recomendado por ASHRAE TC9.9 para CPD (aprox. 18-27 °C y 40-60 % HR;
-  conviene revisar el rango exacto que aplique a tu instalación) y
-  notificación por email, Telegram o Slack cuando se salga de rango.
-- **Token de Grafana con permisos mínimos.** Ahora mismo el datasource usa el
-  token de administrador de InfluxDB (`INFLUXDB_ADMIN_TOKEN`) para simplificar
-  el primer arranque. En cuanto el stack esté validado, crea en InfluxDB un
-  token de **solo lectura** limitado al bucket `cpd_monitorizacion` y úsalo en
-  su lugar.
+- ~~**Alertas en Grafana.**~~ ✅ Implementado — dos reglas (temperatura
+  18-27°C, humedad 40-60%HR) con aviso inmediato, resolución automática, y
+  watchdog de "sin datos"/error. Ver README sección 10.
+- ~~**Token de Grafana con permisos mínimos.**~~ ✅ Implementado — el
+  datasource usa un token de InfluxDB de solo lectura (`GRAFANA_INFLUXDB_TOKEN`),
+  no el de administrador. Ver README sección 10.
+- **Alertas también por Telegram/Slack.** El contact point de email ya está
+  provisionado (`grafana/provisioning/alerting/`); añadir un segundo
+  "receiver" del mismo contact point (o uno nuevo) para otro canal es
+  sencillo y no requiere tocar las reglas de alerta.
+- **Reglas de alerta también provisionadas por fichero.** Se crearon desde
+  la interfaz de Grafana para poder ajustar tiempos con prueba y error
+  cómodamente; ahora que están estables, se podrían exportar a
+  `grafana/provisioning/alerting/rules.yaml` para que sobrevivan a un
+  `docker compose down -v` (borrado de volúmenes) sin tener que recrearlas
+  a mano.
 - **Política de retención / downsampling.** Con dos sensores leyendo cada
   60 s, el volumen de datos es pequeño, pero si en el futuro añades más
   sensores o bajas el intervalo, conviene definir una retención en el bucket
