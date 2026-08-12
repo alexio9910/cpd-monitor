@@ -37,7 +37,7 @@ en gráficas y avisa por email si algo se sale de rango.
 Sensor Bluetooth → Raspberry Pi (colector) → Base de datos → Grafana → Tú
 ```
 
-Todo corre **dentro de la Raspberry Pi** (IP `192.168.99.82` en tu red
+Todo corre **dentro de la Raspberry Pi** (IP `IP_DE_TU_RASPBERRY` en tu red
 local) — no depende de ningún servicio externo ni de internet, salvo para
 mandar los emails de alerta.
 
@@ -45,7 +45,7 @@ mandar los emails de alerta.
 
 ## 2. Cómo leer el dashboard de Grafana
 
-Entra en `http://192.168.99.82:3000` desde cualquier navegador de la red
+Entra en `http://IP_DE_TU_RASPBERRY:3000` desde cualquier navegador de la red
 local. Usuarios disponibles:
 
 | Usuario | Para qué sirve |
@@ -98,7 +98,7 @@ dashboard".
 Conéctate a la Raspberry Pi por SSH y edita un solo fichero:
 
 ```bash
-ssh cpd@192.168.99.82
+ssh cpd@IP_DE_TU_RASPBERRY
 cd ~/cpd-monitor
 nano grafana/provisioning/alerting/contactpoints.yaml
 ```
@@ -170,7 +170,7 @@ cualquier sensor adicional en el futuro). No hace falta recompilar nada.
 Con el sensor encendido y cerca de la Raspberry Pi:
 
 ```bash
-ssh cpd@192.168.99.82
+ssh cpd@IP_DE_TU_RASPBERRY
 bluetoothctl
 scan on
 ```
@@ -271,9 +271,9 @@ Todo esto es seguro de ejecutar, no borra datos:
 
 | Qué | Dónde |
 |---|---|
-| Raspberry Pi (IP) | `192.168.99.82`, usuario SSH `cpd` |
-| Dashboard de Grafana | `http://192.168.99.82:3000` |
-| InfluxDB (rara vez hace falta entrar directamente) | `http://192.168.99.82:8086` |
+| Raspberry Pi (IP) | `IP_DE_TU_RASPBERRY`, usuario SSH `cpd` |
+| Dashboard de Grafana | `http://IP_DE_TU_RASPBERRY:3000` |
+| InfluxDB (rara vez hace falta entrar directamente) | `http://IP_DE_TU_RASPBERRY:8086` |
 | Carpeta de trabajo del proyecto (en la Pi) | `~/cpd-monitor` |
 | Copia real que usa el servicio | `/opt/cpd-monitor` |
 | Todas las contraseñas y tokens | fichero `.env` dentro de `~/cpd-monitor` (nunca se sube a GitHub) |

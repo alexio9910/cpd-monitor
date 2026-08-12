@@ -149,11 +149,11 @@ cat ~/.ssh/id_ed25519.pub
 Ve a GitHub → tu foto de perfil → **Settings** → **SSH and GPG keys** →
 **New SSH key**, y pega ahí el contenido que has copiado.
 
-### 4.4 — Crear el repositorio vacío en tu organización de GitHub
+### 4.4 — Crear el repositorio vacío en GitHub
 
-Desde la web de GitHub: entra en tu organización → **New repository** →
-nómbralo `cpd-monitor` → **no** marques "Add a README" (ya tienes uno) →
-crear.
+Desde la web de GitHub: entra en tu cuenta (o en tu organización, si
+usas una) → **New repository** → nómbralo `cpd-monitor` → **no** marques
+"Add a README" (ya tienes uno) → crear.
 
 ### 4.5 — El primer commit y el primer push
 
@@ -165,9 +165,12 @@ git remote add origin git@github.com:alexio9910/cpd-monitor.git
 git push -u origin main
 ```
 
-> Sustituye `alexio9910` por el nombre real de tu organización, aquí y
-> en `go.mod` (primera línea) y en `internal/store/influx.go` (el import
-> que empieza por `github.com/alexio9910/...`).
+> 💡 Si vas a reutilizar este proyecto como base para otro repositorio
+> distinto, cambia `alexio9910` por tu propio usuario de GitHub (o el
+> nombre de tu organización, si usas una) en estos mismos sitios: aquí,
+> en `go.mod` (primera línea), y en `internal/store/influx.go` /
+> `cmd/collector/main.go` (los imports que empiezan por
+> `github.com/alexio9910/...`).
 
 Refresca la página del repositorio en GitHub: deberías ver todos tus
 ficheros ahí. 🎉

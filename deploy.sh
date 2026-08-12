@@ -1,15 +1,27 @@
 #!/usr/bin/env bash
-# Actualiza y reinicia el proyecto en la Raspberry Pi desde tu WSL.
+# Actualiza y reinicia el proyecto en la Raspberry Pi desde tu máquina de
+# desarrollo (WSL). Automatiza: git pull + reconstruir stack + recompilar
+# + reiniciar servicio, todo en un solo comando.
 #
 # Uso:
 #   ./deploy.sh
 #
-# La primera vez, edita la línea PI_HOST de más abajo con el usuario e IP
-# reales de tu Raspberry Pi (ej: "pi@192.168.1.50").
+# Requiere una variable PI_HOST en tu .env local (el de tu WSL, no hace
+# falta que tenga el resto de variables de InfluxDB/Grafana), por ejemplo:
+#   PI_HOST=cpd@192.168.99.82
+# Así el host real nunca queda escrito en un fichero que se sube a GitHub.
 
 set -e
 
-PI_HOST="tuusuario@IP_DE_LA_PI"
+if [ -f .env ]; then
+  export "$(grep -E '^PI_HOST=' .env | xargs)"
+fi
+
+if [ -z "$PI_HOST" ]; then
+  echo "ERROR: falta PI_HOST en tu .env. Añade una línea como:"
+  echo "  PI_HOST=usuario@IP_DE_TU_RASPBERRY"
+  exit 1
+fi
 
 echo "==> Desplegando en ${PI_HOST}..."
 
@@ -18,7 +30,7 @@ ssh "$PI_HOST" '
   cd cpd-monitor &&
   echo "-- git pull --" &&
   git pull &&
-  echo "-- docker compose up -d --" &&
+  echo "-- docker compose up -d (por si cambio algo del stack) --" &&
   docker compose up -d &&
   echo "-- make build --" &&
   make build &&
@@ -26,6 +38,7 @@ ssh "$PI_HOST" '
   sudo cp bin/cpd-monitor /opt/cpd-monitor/ &&
   echo "-- reiniciando servicio --" &&
   sudo systemctl restart cpd-monitor &&
+  sleep 3 &&
   sudo systemctl status cpd-monitor --no-pager
 '
 

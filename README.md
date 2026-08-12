@@ -40,7 +40,7 @@ flowchart LR
 - Linux con **BlueZ** (viene de serie en Ubuntu/Debian/Raspberry Pi OS).
 - **Go 1.22+** (`go version` para comprobarlo).
 - **Docker** y **Docker Compose** (para InfluxDB y Grafana).
-- Una cuenta de GitHub con una organización ya creada (la tienes).
+- Una cuenta de GitHub (personal o de una organización).
 - La app móvil **nRF Connect** (Android/iOS, gratuita) para el paso 1, si eliges esa opción.
 
 ---
@@ -133,7 +133,7 @@ sudo usermod -aG bluetooth cpdmonitor
 
 ---
 
-## 3. Crear el repositorio en tu organización de GitHub
+## 3. Crear el repositorio en GitHub
 
 En tu máquina de desarrollo (con VSCode + WSL, tal como sueles trabajar):
 
@@ -151,8 +151,9 @@ git add .
 git commit -m "Estructura inicial del proyecto: colector Go, docker-compose y dashboard de Grafana"
 ```
 
-Crea el repositorio vacío en tu organización de GitHub (desde la web, sin
-README ni licencia, para no chocar con lo que ya tienes) y enlázalo:
+Crea el repositorio vacío en tu cuenta de GitHub, personal o de una
+organización (desde la web, sin README ni licencia, para no chocar con
+lo que ya tienes) y enlázalo:
 
 ```bash
 git remote add origin git@github.com:TU-ORGANIZACION/cpd-monitor.git
@@ -160,7 +161,7 @@ git push -u origin main
 ```
 
 > Sustituye `TU-ORGANIZACION` aquí y en `go.mod` / `internal/store/influx.go`
-> por el nombre real de tu organización de GitHub.
+> por tu usuario de GitHub (o el nombre de tu organización, si usas una).
 
 ---
 
