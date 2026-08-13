@@ -10,6 +10,16 @@ Smart Gadget**, un colector en **Go**, **InfluxDB** como base de datos de
 series temporales y **Grafana** para visualización y alertado. Todo
 autoalojado, sin dependencias externas salvo el envío de email.
 
+## 🛠️ Stack
+
+![Go](https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![InfluxDB](https://img.shields.io/badge/InfluxDB-2.7-22ADF6?logo=influxdb&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-13-F46800?logo=grafana&logoColor=white)
+![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-OS-A22846?logo=raspberrypi&logoColor=white)
+![Bluetooth LE](https://img.shields.io/badge/Bluetooth-LE-0082FC?logo=bluetooth&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-systemd-FCC624?logo=linux&logoColor=black)
+
 ## 📚 Documentación
 
 | Documento | Para qué |
