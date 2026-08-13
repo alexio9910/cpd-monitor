@@ -5,16 +5,16 @@ paso, un sistema que lee dos sensores de temperatura/humedad por Bluetooth y
 te los enseña en gráficas bonitas — todo alojado en una Raspberry Pi dentro
 de tu CPD.
 
-Si en algún punto un comando te da un error, **para ahí, no sigas** a la
-siguiente instrucción: cópiame el error exacto y lo resolvemos antes de
+Si en algún punto un comando da un error, **para ahí, no sigas** a la
+siguiente instrucción: revisa el mensaje de error exacto antes de
 continuar. Casi todos los errores en este tipo de proyectos se resuelven en
 un minuto si se atajan en el momento en que aparecen.
 
-> 💡 **La forma más cómoda de seguir esta guía es dentro de Claude Desktop,
-> usando Claude Code**, apuntando a tu carpeta de WSL. Así, en vez de copiar
-> y pegar cada comando tú mismo, puedes pedirle a Claude que los ejecute por
-> ti, uno a uno, y que te explique qué hace cada uno antes de lanzarlo. Al
-> final de esta guía (Fase 10) te explico cómo arrancar esa sesión.
+> 💡 **Alternativa más cómoda:** esta guía se puede seguir también dentro de
+> un asistente de código con acceso real a tu terminal (por ejemplo, Claude
+> Code), apuntándolo a tu carpeta de trabajo — así los comandos se ejecutan
+> automáticamente, con su resultado explicado paso a paso. Ver Fase 13 para
+> más detalle.
 
 ---
 
@@ -75,13 +75,17 @@ sudo usermod -aG docker $USER
 ## Fase 2 — Crear la carpeta del proyecto
 
 ```bash
-mkdir -p ~/proyectos/cpd-monitor
-cd ~/proyectos/cpd-monitor
+mkdir -p ~/proyectos
+cd ~/proyectos
+git clone https://github.com/alexio9910/cpd-monitor.git
+cd cpd-monitor
 ```
 
-Ahora copia dentro de esa carpeta **todos** los ficheros del `.zip` que te
-he generado (descomprímelo directamente ahí, o pídele a Claude Code que lo
-haga por ti si estás trabajando desde Claude Desktop).
+> 💡 Si prefieres tener tu **propia copia independiente** del proyecto
+> (para hacer tus propios cambios sin tocar el repositorio original), haz
+> un fork desde GitHub antes de clonar, o simplemente descarga el código
+> como `.zip` (botón verde **Code → Download ZIP** en la página del
+> repositorio) y descomprímelo en `~/proyectos/cpd-monitor`.
 
 Comprueba que está todo:
 
@@ -709,13 +713,12 @@ echo "PI_HOST=tuusuario@IP_DE_LA_PI" >> .env
 
 ---
 
-## Fase 13 — Seguir con Claude Desktop / Claude Code
+## Fase 13 — Seguir la guía con un asistente de código
 
-Todo lo anterior lo puedes teclear tú a mano siguiendo esta guía, o puedes
-abrir **Claude Desktop**, entrar en la pestaña de **Code**, apuntarlo a tu
-carpeta `~/proyectos/cpd-monitor` de WSL, y pegarle esta misma guía
-(o simplemente decirle "sigamos la guía desde la Fase 1"). Como esa sesión
-sí tiene acceso real a tu terminal, puede ejecutar los comandos por ti,
-enseñarte el resultado antes de continuar, y corregir sobre la marcha si
-algo no sale como se espera — algo que yo, aquí en el chat, no puedo hacer
-porque no tengo acceso a tu WSL ni a tu Raspberry Pi real.
+Todo lo anterior se puede teclear a mano, o seguirse con un asistente de
+código con acceso real a la terminal (por ejemplo, **Claude Code**,
+apuntado a la carpeta `~/proyectos/cpd-monitor`). Con acceso directo a la
+terminal, el asistente puede ejecutar cada comando, mostrar el resultado
+antes de continuar, y corregir sobre la marcha si algo no sale como se
+espera — a diferencia de un chat sin acceso al sistema real, que solo
+puede indicar qué comando ejecutar.

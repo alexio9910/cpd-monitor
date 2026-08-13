@@ -7,10 +7,12 @@ versión 1 esté funcionando de forma estable.
 
 - ~~**Alertas en Grafana.**~~ ✅ Implementado — dos reglas (temperatura
   18-27°C, humedad 40-60%HR) con aviso inmediato, resolución automática, y
-  watchdog de "sin datos"/error. Ver README sección 10.
+  watchdog de "sin datos"/error. Ver README ("🔔 Alertas") o
+  `docs/MANUAL-EXPERTO.md` sección 3.
 - ~~**Token de Grafana con permisos mínimos.**~~ ✅ Implementado — el
   datasource usa un token de InfluxDB de solo lectura (`GRAFANA_INFLUXDB_TOKEN`),
-  no el de administrador. Ver README sección 10.
+  no el de administrador. Ver README ("🔒 Seguridad") o
+  `docs/MANUAL-EXPERTO.md` sección 6.
 - **Alertas también por Telegram/Slack.** El contact point de email ya está
   provisionado (`grafana/provisioning/alerting/`); añadir un segundo
   "receiver" del mismo contact point (o uno nuevo) para otro canal es

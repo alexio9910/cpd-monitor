@@ -62,7 +62,8 @@ Detalle completo de cada decisión: [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.m
 **Requisitos**: Linux con BlueZ · Go 1.22+ · Docker + Compose.
 
 ```bash
-git clone git@github.com:TU-USUARIO/cpd-monitor.git
+git clone git@github.com:alexio9910/cpd-monitor.git
+# (si vas a usar este proyecto como base para el tuyo, sustituye por tu propio usuario/organización)
 cd cpd-monitor
 
 # Sensores: identifica cada MAC con `bluetoothctl` (scan on / scan off)

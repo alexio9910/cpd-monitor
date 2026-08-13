@@ -29,7 +29,7 @@ flowchart LR
 
 | Decisión | Alternativas consideradas | Por qué esta opción |
 |---|---|---|
-| **Go para el colector** | Python (bleak), Node.js (noble) | Es lo que pediste. Además: binario único sin runtime que instalar, y bajo consumo de memoria para un proceso que va a vivir permanentemente en un host del CPD. (La idea inicial pasaba por la librería `tinygo.org/x/bluetooth`, pero se descartó más adelante por incompatibilidad con BlueZ reciente — ver la fila "Hablar con BlueZ directamente por D-Bus" más abajo). |
+| **Go para el colector** | Python (bleak), Node.js (noble) | Binario único sin runtime que instalar, y bajo consumo de memoria para un proceso que va a vivir permanentemente en un host del CPD. (La idea inicial pasaba por la librería `tinygo.org/x/bluetooth`, pero se descartó más adelante por incompatibilidad con BlueZ reciente — ver la fila "Hablar con BlueZ directamente por D-Bus" más abajo). |
 | **InfluxDB OSS 2.7 (no InfluxDB 3 Core)** | InfluxDB 3 Core, Prometheus + Pushgateway, TimescaleDB | InfluxDB 3 Core (la versión más nueva) **limita las consultas a un rango de 72 horas** en su edición gratuita, algo pensado para observabilidad de infraestructura a corto plazo, no para el histórico de meses que interesa en un CPD (tendencias estacionales, auditorías, capacity planning). InfluxDB 2.7 no tiene esa limitación, es estable, madura y tiene soporte nativo y muy pulido en Grafana. Ver [docs/MEJORAS-FUTURAS.md](MEJORAS-FUTURAS.md) para cuándo sí tendría sentido migrar a v3. |
 | **Grafana OSS auto-alojado** | Grafana Cloud | Coherente con que quieres todo self-hosted y sin dependencias externas. |
 | **El colector NO va en Docker** | Contenerizar todo, incluido el colector | BLE en Linux requiere hablar con BlueZ vía D-Bus y acceder al adaptador Bluetooth del host. Es *posible* hacerlo desde un contenedor (montando el socket de D-Bus y usando `network_mode: host`), pero añade complejidad de permisos que no aporta nada en una primera versión. El colector se despliega como servicio `systemd` nativo; InfluxDB y Grafana sí se benefician de Docker porque no tocan hardware. |
@@ -61,6 +61,6 @@ El SHT4x Smart Gadget expone, entre otras, estas características GATT:
 Estos UUID proceden del firmware oficial que Sensirion publica en abierto
 (`github.com/Sensirion/SmartGadget-Firmware`) y están confirmados de forma
 independiente leyendo el dispositivo real con `gatttool`/nRF Connect por
-varios proyectos de la comunidad. Aun así, el paso 1 del README (escanear tu
-sensor concreto con nRF Connect) existe para que verifiques estos UUID contra
-tu unidad física antes de darlos por buenos a ciegas.
+varios proyectos de la comunidad. Aun así, la Fase 5 de `docs/GUIA-DESDE-CERO.md` (escanear tu sensor
+concreto) existe para que verifiques estos UUID contra tu unidad física
+antes de darlos por buenos a ciegas.
