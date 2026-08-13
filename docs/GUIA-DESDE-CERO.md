@@ -273,11 +273,34 @@ solo hay que copiarlo):
 ```bash
 sudo mkdir -p /etc/systemd/journald.conf.d
 sudo cp deploy/systemd/journald-cpd-monitor.conf /etc/systemd/journald.conf.d/
-sudo systemctl restart systemd-journald
 ```
 
-> 💡 Este comando necesita que ya hayas clonado el repositorio (Fase 6.4,
-> justo después) — si prefieres, vuelve a este paso después de esa fase.
+Raspberry Pi OS trae de fábrica una configuración que guarda los logs
+**solo en memoria** (para no desgastar la tarjeta SD), y que puede pisar
+silenciosamente la nuestra sin avisar. Hay que desactivarla explícitamente
+y forzar el primer volcado a disco:
+
+```bash
+sudo ln -sf /dev/null /etc/systemd/journald.conf.d/40-rpi-volatile-storage.conf
+sudo systemctl restart systemd-journald
+sudo journalctl --flush
+```
+
+Comprueba que quedó bien:
+
+```bash
+journalctl --header | grep -i "File Path"
+```
+
+Debe decir `/var/log/journal/...` (disco, persistente) — si dice
+`/run/log/journal/...` (memoria), algo no se aplicó; ver
+`docs/MANUAL-EXPERTO.md` sección 8 para el diagnóstico completo.
+
+> 💡 Estos comandos necesitan que ya hayas clonado el repositorio (Fase
+> 6.4, justo después) — si prefieres, vuelve a este paso después de esa
+> fase. El comando de `ln -sf` es específico de Raspberry Pi OS: en otros
+> Linux (mini-PC, servidor) probablemente ese fichero no exista, y el
+> comando simplemente no hace nada — es seguro ejecutarlo igualmente.
 
 ### 6.4 — Clonar tu proyecto desde GitHub
 

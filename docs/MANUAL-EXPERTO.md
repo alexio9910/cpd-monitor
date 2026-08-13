@@ -291,6 +291,55 @@ Linux). El fichero **activo** (donde se escribe ahora mismo) se llama
 | `MaxFileSec=1week` | Fuerza una rotación **al menos** una vez por semana, aunque el fichero no haya llegado a los 20 MB. Con el volumen de logs tan bajo de este proyecto, sin esto un solo fichero podría tardar meses en rotar — con este límite, siempre hay un punto de corte semanal claro. |
 | `MaxRetentionSec=90day` | Nada de más de 90 días de antigüedad se conserva, aunque hubiera espacio de sobra. |
 
+> ⚠️ **Aviso específico de Raspberry Pi OS — leer antes de aplicar esto.**
+> Raspberry Pi OS trae, de fábrica, un fichero propio
+> (`/usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf`) que
+> fuerza `Storage=volatile` — es decir, **logs solo en memoria RAM,
+> nunca en la tarjeta SD**. Es una decisión deliberada del sistema
+> operativo: cada escritura en una SD la desgasta un poco, y evitar
+> escribir logs constantemente en ella alarga su vida útil.
+>
+> El problema: como ese fichero también es un "drop-in" válido para
+> journald, **puede pisar silenciosamente** el `Storage=persistent` de
+> `journald-cpd-monitor.conf` — journald no avisa de ningún conflicto,
+> simplemente aplica lo que su orden interno de prioridad decida, sin
+> avisar. El resultado, si no se corrige, es que **todos los límites de
+> esta tabla existen sobre el papel, pero los logs se siguen perdiendo
+> en cada reinicio** de todas formas — sin ningún error visible que lo
+> delate.
+>
+> **Cómo desactivarlo de forma garantizada:** no basta con "poner otro
+> fichero que compita" — hay que **enmascararlo explícitamente**,
+> creando un enlace con el mismo nombre apuntando a `/dev/null` dentro
+> de `/etc/` (que sí tiene prioridad garantizada sobre `/usr/lib/`):
+>
+> ```bash
+> sudo ln -sf /dev/null /etc/systemd/journald.conf.d/40-rpi-volatile-storage.conf
+> sudo systemctl restart systemd-journald
+> ```
+>
+> Y un segundo paso, igual de necesario: aunque la configuración ya sea
+> correcta, **journald no traslada por sí solo** lo que ya tenía
+> guardado en memoria hacia el disco — hace falta pedírselo de forma
+> explícita, una única vez:
+>
+> ```bash
+> sudo journalctl --flush
+> ```
+>
+> Verifica que ha funcionado con `journalctl --header | grep -i "File
+> Path"` — debe decir `/var/log/journal/...`, no `/run/log/journal/...`.
+>
+> **La contrapartida honesta:** al desactivar esta optimización de
+> fábrica, la SD sufre algo más de desgaste por las escrituras de logs.
+> Con el volumen tan bajo de este proyecto (unos 20 MB en total) el
+> efecto es mínimo, pero es el precio real de tener logs que sobrevivan
+> a un reinicio — que, para un sistema de monitorización de un CPD
+> pensado para correr años sin supervisión constante, vale la pena
+> pagar: sin logs persistentes, cualquier investigación de un fallo
+> pasado (justo cuando más falta hacen) sería imposible si el sistema
+> se hubiera reiniciado entre medias.
+
 **Cómo rota de verdad, paso a paso:** el fichero activo va creciendo; en
 cuanto llega a `SystemMaxFileSize` (20M) **o** pasa una semana
 (`MaxFileSec`), lo que ocurra antes, journald lo cierra ("archivado") y
