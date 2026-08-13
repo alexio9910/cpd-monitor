@@ -265,6 +265,20 @@ sudo usermod -aG docker $USER
 Cierra la sesión SSH (`exit`) y vuelve a entrar para que el grupo `docker`
 tenga efecto.
 
+De paso, limita la retención de logs del sistema — sin esto, pueden crecer
+sin límite y llenar la tarjeta SD con el tiempo en un servicio pensado
+para correr meses sin supervisión (el proyecto ya trae el fichero listo,
+solo hay que copiarlo):
+
+```bash
+sudo mkdir -p /etc/systemd/journald.conf.d
+sudo cp deploy/systemd/journald-cpd-monitor.conf /etc/systemd/journald.conf.d/
+sudo systemctl restart systemd-journald
+```
+
+> 💡 Este comando necesita que ya hayas clonado el repositorio (Fase 6.4,
+> justo después) — si prefieres, vuelve a este paso después de esa fase.
+
 ### 6.4 — Clonar tu proyecto desde GitHub
 
 Sigue conectado a la Pi por SSH. Como la Pi también necesita autenticarse

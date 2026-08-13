@@ -255,6 +255,77 @@ Todo esto es seguro de ejecutar, no borra datos:
 | Reiniciar InfluxDB (la base de datos) | `docker compose restart influxdb` |
 | Reiniciar TODO (tras un corte de luz, etc.) | Simplemente enciende la Raspberry Pi — todo arranca solo |
 | Guardar un cambio de configuración en GitHub | `git add -A && git commit -m "describe aquí qué cambiaste"` y luego `git push` |
+| Ver cuánto espacio ocupan los logs | `journalctl --disk-usage` |
+
+### Retención y rotación de logs
+
+Los logs del colector (y de cualquier otro servicio del sistema) no van a
+un fichero de texto — van a **`journald`**, el sistema de logs de
+systemd, que los guarda en un **formato binario propio**. Es lo que ves
+al ejecutar `journalctl -u cpd-monitor`: `journalctl` es la herramienta
+que sabe leer ese formato; no se pueden abrir esos ficheros con `cat` o
+un editor de texto normal (ver más abajo cómo consultarlos bien).
+
+**Dónde viven los ficheros:**
+
+```bash
+ls -lh /var/log/journal/*/
+```
+
+Verás varios ficheros `.journal` dentro de una carpeta cuyo nombre es el
+"machine-id" (un identificador único de esta instalación concreta de
+Linux). El fichero **activo** (donde se escribe ahora mismo) se llama
+`system.journal`; los **ya rotados** tienen nombres como
+`system@<id-de-arranque>-<numero>-<fecha>.journal` — cada uno es un
+"trozo" cerrado del historial, de un periodo de tiempo concreto.
+
+**Qué hace cada parámetro** (fichero
+`deploy/systemd/journald-cpd-monitor.conf`, instalado en
+`/etc/systemd/journald.conf.d/cpd-monitor.conf`):
+
+| Parámetro | Qué hace |
+|---|---|
+| `Storage=persistent` | Guarda los logs en disco (`/var/log/journal/`), no solo en memoria RAM. Sin esto, **se perderían todos los logs al reiniciar** — justo cuando más falta hacen, para investigar qué pasó antes de un fallo. |
+| `SystemMaxUse=200M` | Techo de espacio total que pueden ocupar **todos** los ficheros de log juntos (activo + archivados). Al superarlo, journald borra los archivados más antiguos hasta volver a estar por debajo. |
+| `SystemMaxFileSize=20M` | Tamaño máximo de **cada fichero individual** antes de cerrarlo (rotarlo) y empezar uno nuevo. Sin fijarlo, journald usa un valor automático (1/8 del `SystemMaxUse`) menos predecible. |
+| `MaxFileSec=1week` | Fuerza una rotación **al menos** una vez por semana, aunque el fichero no haya llegado a los 20 MB. Con el volumen de logs tan bajo de este proyecto, sin esto un solo fichero podría tardar meses en rotar — con este límite, siempre hay un punto de corte semanal claro. |
+| `MaxRetentionSec=90day` | Nada de más de 90 días de antigüedad se conserva, aunque hubiera espacio de sobra. |
+
+**Cómo rota de verdad, paso a paso:** el fichero activo va creciendo; en
+cuanto llega a `SystemMaxFileSize` (20M) **o** pasa una semana
+(`MaxFileSec`), lo que ocurra antes, journald lo cierra ("archivado") y
+abre uno nuevo. Cuando la suma de todos los ficheros archivados supera
+`SystemMaxUse` (200M), o alguno tiene más de `MaxRetentionSec` (90 días),
+journald **borra esos ficheros completos** — no los recorta ni los
+comprime más, los elimina enteros. Todo esto ocurre solo, sin cron ni
+intervención manual.
+
+Sobre la compresión: journald ya comprime internamente las entradas de
+log largas (por encima de ~512 bytes), campo a campo, según cómo esté
+compilado el sistema — es un mecanismo distinto al de `logrotate`
+(que comprime el fichero entero con gzip). Con el volumen de este
+proyecto (una línea corta por sensor y minuto), la inmensa mayoría de
+entradas ni siquiera llega a ese umbral, así que en la práctica el efecto
+es mínimo — el tamaño ya es pequeño de por sí (unos 9 MB en total en una
+instalación típica).
+
+**Por qué no `logrotate`:** `logrotate` está pensado para ficheros de
+texto plano, y estos logs nunca tocan uno — van directos al formato
+binario de journald. La herramienta correcta para rotar logs de journald
+es su propia configuración (la de arriba), no `logrotate`.
+
+**Cómo consultar los logs correctamente** (siempre con `journalctl`,
+nunca abriendo los ficheros `.journal` a mano):
+
+| Quiero... | Comando |
+|---|---|
+| Ver los logs del colector en directo | `journalctl -u cpd-monitor -f` |
+| Ver solo lo de hoy | `journalctl -u cpd-monitor --since today` |
+| Ver un rango de fechas concreto | `journalctl -u cpd-monitor --since "2026-08-01" --until "2026-08-07"` |
+| Ver solo los últimos N minutos/horas | `journalctl -u cpd-monitor --since "-2 hours"` |
+| Ver cuánto espacio ocupan en total | `journalctl --disk-usage` |
+| Exportar todo a un fichero de texto plano (para archivar o compartir) | `journalctl -u cpd-monitor --no-pager > logs-cpd-monitor.txt` |
+| Ver logs de un arranque anterior de la Pi | `journalctl -u cpd-monitor --list-boots` (lista arranques) y luego `journalctl -u cpd-monitor -b -1` (el anterior) |
 
 ---
 
