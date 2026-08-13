@@ -340,7 +340,7 @@ El colector no necesita recompilarse para añadir sensores: basta con editar
    crearlos para el segundo sensor, usa el script ya preparado para
    ello (ver `docs/MANUAL-EXPERTO.md`, sección 7.3):
 
-````bash
+```bash
    python3 scripts/anadir_sensor_dashboard.py sensor2 "Sensor 2"
    docker compose restart grafana
 ```
