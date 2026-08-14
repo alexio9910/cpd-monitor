@@ -26,6 +26,7 @@ services:
       DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+      TZ: Europe/Madrid
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8086/health"]
       interval: 5s
