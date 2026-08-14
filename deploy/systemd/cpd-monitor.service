@@ -1,23 +1,26 @@
 [Unit]
 Description=Colector BLE Sensirion SHT4x -> InfluxDB (monitorizacion CPD)
-After=network-online.target bluetooth.target
-Wants=network-online.target bluetooth.target
+After=network-online.target bluetooth.target docker.service
+Wants=network-online.target bluetooth.target docker.service
 
 [Service]
 Type=simple
 User=cpdmonitor
 Group=cpdmonitor
 WorkingDirectory=/opt/cpd-monitor
+
+# Espera activa a que InfluxDB responda de verdad antes de arrancar el
+# colector (no solo a que el motor de Docker esté arriba). Evita el
+# fallo/reintento espurio en el primer arranque tras un reinicio.
+ExecStartPre=/opt/cpd-monitor/wait-for-influxdb.sh
+TimeoutStartSec=120
+
 ExecStart=/opt/cpd-monitor/cpd-monitor -config /opt/cpd-monitor/config.yaml
 Restart=on-failure
 RestartSec=10
 
-# El usuario de servicio necesita pertenecer al grupo "bluetooth" del
-# sistema para poder hablar con BlueZ a traves de D-Bus. El README explica
-# como crear el usuario y anadirlo a este grupo.
 SupplementaryGroups=bluetooth
 
-# Endurecimiento basico del servicio (opcional pero recomendable).
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/opt/cpd-monitor
