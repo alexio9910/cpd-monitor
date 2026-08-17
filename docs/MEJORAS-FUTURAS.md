@@ -5,6 +5,29 @@ versión 1 esté funcionando de forma estable.
 
 ## Alta prioridad, poco esfuerzo
 
+- **Corregir el modo de reducción en las reglas de alerta (evita un falso
+  `-1.0`).** Diagnosticado, **sin aplicar todavía** (decisión consciente:
+  el fallo que lo causó fue puntual, no se ha repetido). Si InfluxDB queda
+  inaccesible un instante (por ejemplo, durante un backup que detiene
+  Docker), la expresión "Reduce" de ambas reglas usa el modo "Replace
+  Non-Numeric Value", que rellena el hueco de datos con `-1` en vez de
+  tratarlo como "sin datos" — genera un email de alerta falso (`-1.0°C` /
+  `-1.0%H`, fuera de cualquier rango real, pero sin relación con un
+  problema físico de verdad). **Arreglo, cuando se quiera aplicar:**
+  Alerting → Alert rules → editar cada regla → en la expresión "Reduce",
+  cambiar "Mode" de "Replace Non-Numeric Value" a "Drop Non-Numeric
+  Value". El watchdog de "sin datos" (ya configurado como `Alerting`)
+  recogerá correctamente el caso en su lugar.
+- **Añadir margen de histéresis a las reglas de alerta (evita el
+  parpadeo).** Diagnosticado, **sin aplicar todavía**. Con "Periodo
+  pendiente" y "Seguir activando durante" en `Ninguno` (velocidad
+  máxima), un valor real oscilando justo en el límite (ej. humedad entre
+  39.8% y 40.3%) dispara un correo por cada cruce — se observaron más de
+  50 emails en una sola noche por este motivo, un caso real de
+  "parpadeo" (*alert flapping*). **Arreglo recomendado, cuando se quiera
+  aplicar:** subir ambos campos a un margen pequeño (1-2 minutos) en las
+  dos reglas — trade-off consciente: el aviso llegaría 1-2 minutos más
+  tarde en un cambio real, a cambio de eliminar el spam en casos límite.
 - ~~**Alertas en Grafana.**~~ ✅ Implementado — dos reglas (temperatura
   18-27°C, humedad 40-60%HR) con aviso inmediato, resolución automática, y
   watchdog de "sin datos"/error. Ver README ("🔔 Alertas") o

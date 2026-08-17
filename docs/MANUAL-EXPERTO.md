@@ -24,7 +24,8 @@ sección que necesites.
 9. [Algo no funciona — diagnóstico rápido](#9-algo-no-funciona--diagnóstico-rápido)
 10. [Dónde está todo (referencia rápida)](#10-dónde-está-todo-referencia-rápida)
 11. [Configurar una IP fija para la Raspberry Pi](#11-configurar-una-ip-fija-para-la-raspberry-pi)
-12. [Glosario](#12-glosario)
+12. [Backup completo de la tarjeta SD (tar)](#12-backup-completo-de-la-tarjeta-sd-tar)
+13. [Glosario](#13-glosario)
 
 ---
 
@@ -490,7 +491,93 @@ Si la IP nueva es distinta a la que tenías, actualiza:
 
 ---
 
-## 12. Glosario
+## 12. Backup completo de la tarjeta SD (tar)
+
+A diferencia del backup del *proyecto* (código y configuración, ya
+respaldado de forma continua en GitHub — ver sección 8), esto es una
+copia de **todo el sistema operativo** de la Raspberry Pi: útil como
+"punto de partida" completo si la tarjeta SD se rompe algún día, para no
+tener que reinstalar todo desde cero siguiendo
+`docs/GUIA-DESDE-CERO.md`.
+
+Se evaluó primero [raspiBackup](https://github.com/framps/raspiBackup)
+(la herramienta de referencia de la comunidad para esto), pero se
+descartó para un backup puntual como este: sus comprobaciones de
+seguridad (exigir parar/arrancar servicios, exigir un dispositivo
+externo válido) están pensadas para backups automáticos y desatendidos,
+y añaden fricción innecesaria aquí. El comando nativo `tar` es más
+simple y predecible para este caso.
+
+### Procedimiento (backup en caliente, sin parar ningún servicio)
+
+Con el sistema funcionando con normalidad:
+
+```bash
+ssh usuario@IP_DE_TU_RASPBERRY
+mkdir -p ~/backup-temp
+sudo tar --numeric-owner -czvf ~/backup-temp/backup-tar-$(date +%Y%m%d).tar.gz \
+  --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/tmp \
+  --exclude=/mnt --exclude=/home/usuario/backup-temp / 2>&1 | tail -20
+echo "Codigo de salida: ${PIPESTATUS[0]}"
+```
+
+Las carpetas excluidas son todas **estado de la máquina en marcha**, no
+configuración ni datos guardados — es la práctica estándar al respaldar
+un sistema Linux con `tar`, no algo específico de este proyecto:
+
+| Carpeta | Por qué se excluye |
+|---|---|
+| `/proc`, `/sys` | Vistas en vivo del kernel/hardware, generadas de nuevo en cada arranque — no son ficheros reales. |
+| `/dev` | Nodos de dispositivo, recreados automáticamente según el hardware detectado al arrancar. |
+| `/run`, `/tmp` | Estado temporal en memoria/disco de procesos en marcha — se vacía en cada reinicio por diseño. |
+| `/mnt` | Puntos de montaje temporales propios (vacío en uso normal). |
+
+**Un código de salida `1` es aceptable** en un backup en caliente — suele
+significar avisos del tipo `file changed as we read it` (algún fichero,
+típicamente de InfluxDB, cambió justo mientras se copiaba). Cualquier
+otro código merece revisión.
+
+Bájalo a tu ordenador con `scp`, desde tu máquina de desarrollo:
+
+```bash
+scp usuario@IP_DE_TU_RASPBERRY:~/backup-temp/backup-tar-*.tar.gz ~/Downloads/
+```
+
+Y limpia la copia temporal de la Pi una vez confirmado que llegó bien:
+
+```bash
+rm -rf ~/backup-temp
+```
+
+> ⚠️ Al ser un backup en caliente, existe una posibilidad remota de
+> capturar algún fichero de InfluxDB a mitad de una escritura. Con datos
+> que se regeneran solos cada minuto y sin información crítica
+> irrecuperable, es un riesgo asumible a cambio de no interrumpir el
+> servicio de monitorización para hacer el backup.
+
+### Cómo restaurarlo
+
+1. Instala una Raspberry Pi OS limpia en una tarjeta SD nueva y arráncala
+   una vez para que termine su configuración inicial.
+2. Copia el `.tar.gz` a la nueva Pi:
+```bash
+   scp backup-tar-AAAAMMDD.tar.gz usuario@IP_DE_LA_NUEVA_PI:~/
+```
+3. Extráelo sobre la raíz del sistema (con cuidado: esto sobrescribe
+   ficheros del sistema — hazlo solo en una instalación recién hecha,
+   nunca sobre un sistema ya en uso):
+```bash
+   ssh usuario@IP_DE_LA_NUEVA_PI
+   sudo tar --numeric-owner -xzvf ~/backup-tar-AAAAMMDD.tar.gz -C /
+```
+4. Reinicia y verifica que todo volvió igual (`docker ps`,
+   `systemctl status cpd-monitor`, el dashboard de Grafana) — igual que
+   se comprueba tras cualquier despliegue nuevo (Fase 10 de
+   `docs/GUIA-DESDE-CERO.md`).
+
+---
+
+## 13. Glosario
 
 | Término | Qué es |
 |---|---|
