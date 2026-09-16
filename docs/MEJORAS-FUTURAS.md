@@ -5,47 +5,47 @@ versión 1 esté funcionando de forma estable.
 
 ## Alta prioridad, poco esfuerzo
 
-- **Corregir el modo de reducción en las reglas de alerta (evita un falso
-  `-1.0`).** Diagnosticado, **sin aplicar todavía** (decisión consciente:
-  el fallo que lo causó fue puntual, no se ha repetido). Si InfluxDB queda
-  inaccesible un instante (por ejemplo, durante un backup que detiene
-  Docker), la expresión "Reduce" de ambas reglas usa el modo "Replace
-  Non-Numeric Value", que rellena el hueco de datos con `-1` en vez de
-  tratarlo como "sin datos" — genera un email de alerta falso (`-1.0°C` /
-  `-1.0%H`, fuera de cualquier rango real, pero sin relación con un
-  problema físico de verdad). **Arreglo, cuando se quiera aplicar:**
-  Alerting → Alert rules → editar cada regla → en la expresión "Reduce",
-  cambiar "Mode" de "Replace Non-Numeric Value" a "Drop Non-Numeric
-  Value". El watchdog de "sin datos" (ya configurado como `Alerting`)
-  recogerá correctamente el caso en su lugar.
-- **Añadir margen de histéresis a las reglas de alerta (evita el
-  parpadeo).** Diagnosticado, **sin aplicar todavía**. Con "Periodo
-  pendiente" y "Seguir activando durante" en `Ninguno` (velocidad
-  máxima), un valor real oscilando justo en el límite (ej. humedad entre
-  39.8% y 40.3%) dispara un correo por cada cruce — se observaron más de
-  50 emails en una sola noche por este motivo, un caso real de
-  "parpadeo" (*alert flapping*). **Arreglo recomendado, cuando se quiera
-  aplicar:** subir ambos campos a un margen pequeño (1-2 minutos) en las
-  dos reglas — trade-off consciente: el aviso llegaría 1-2 minutos más
-  tarde en un cambio real, a cambio de eliminar el spam en casos límite.
-- ~~**Alertas en Grafana.**~~ ✅ Implementado — dos reglas (temperatura
-  18-27°C, humedad 40-60%HR) con aviso inmediato, resolución automática, y
-  watchdog de "sin datos"/error. Ver README ("🔔 Alertas") o
-  `docs/MANUAL-EXPERTO.md` sección 3.
+- ~~**Corregir el modo de reducción en las reglas de alerta (evita un falso
+  `-1.0`).**~~ ✅ Resuelto el 14/09/2026. Ver `docs/ALERTAS.md` sección 5.1.
+- ~~**Añadir margen de histéresis a las reglas de alerta (evita el
+  parpadeo).**~~ ✅ Resuelto el 16/09/2026 — periodo pendiente de 1m en
+  temperatura/humedad, grupos de evaluación propios (`CPD-Ambiente`, 1m en
+  vez de los 10s genéricos originales), y corregido además un segundo bug
+  relacionado ("Faltan evaluaciones de series para resolver" en su valor
+  por defecto de 2, causaba resoluciones falsas con huecos BLE puntuales
+  del colector). Ver `docs/ALERTAS.md` sección 5.2.
+- ~~**Alertas en Grafana.**~~ ✅ Implementado — cuatro reglas: temperatura
+  (18-27°C) y humedad (40-60%HR) con aviso cada 30 min mientras persista;
+  `Sensor CPD sin datos` con un único aviso por incidencia (24h, ajustado
+  a nivel de regla) y recuperación inmediata; `Batería CPD baja` (<10%).
+  Detalle completo en `docs/ALERTAS.md`.
 - ~~**Token de Grafana con permisos mínimos.**~~ ✅ Implementado — el
-  datasource usa un token de InfluxDB de solo lectura (`GRAFANA_INFLUXDB_TOKEN`),
-  no el de administrador. Ver README ("🔒 Seguridad") o
-  `docs/MANUAL-EXPERTO.md` sección 6.
+  datasource usa un token de InfluxDB de solo lectura
+  (`GRAFANA_INFLUXDB_TOKEN`), no el de administrador.
 - **Alertas también por Telegram/Slack.** El contact point de email ya está
   provisionado (`grafana/provisioning/alerting/`); añadir un segundo
   "receiver" del mismo contact point (o uno nuevo) para otro canal es
   sencillo y no requiere tocar las reglas de alerta.
-- **Reglas de alerta también provisionadas por fichero.** Se crearon desde
-  la interfaz de Grafana para poder ajustar tiempos con prueba y error
-  cómodamente; ahora que están estables, se podrían exportar a
-  `grafana/provisioning/alerting/rules.yaml` para que sobrevivan a un
-  `docker compose down -v` (borrado de volúmenes) sin tener que recrearlas
-  a mano.
+- **Provisionar por fichero las reglas de alerta y el silencio.** Las
+  cuatro reglas (temperatura, humedad, sin datos, batería) y el silencio
+  de `DatasourceNoData` se crearon/ajustaron desde la interfaz de Grafana
+  con bastante prueba y error; ahora que están estables (16/09/2026), se
+  podrían exportar a `grafana/provisioning/alerting/rules.yaml` y
+  `mute-timings.yaml` para que sobrevivan a un `docker compose down -v`
+  (borrado de volúmenes) sin tener que recrearlas a mano. Ver
+  `docs/ALERTAS.md` para el detalle exacto de la configuración a
+  reproducir.
+- **Watchdog de systemd para el colector.** El 14-16/09/2026 el proceso
+  `cpd-monitor` quedó bloqueado casi 2 días (`active (running)` en
+  `systemctl status`, pero sin escribir ningún log nuevo) sin que systemd
+  lo detectara ni reiniciara — se descubrió por casualidad comparando el
+  dashboard con un email que no cuadraba. Un watchdog
+  (`WatchdogSec=` en el `.service` + que el colector llame a
+  `sd_notify(WATCHDOG=1)` en cada ciclo exitoso, vía
+  `github.com/coreos/go-systemd/daemon`) haría que systemd lo reiniciara
+  solo en minutos si deja de responder, sin depender de que alguien lo
+  note manualmente ni de esperar los 10 min de la regla "sin datos". Ver
+  `docs/ALERTAS.md` sección 5.4.
 - **Política de retención / downsampling.** Con dos sensores leyendo cada
   60 s, el volumen de datos es pequeño, pero si en el futuro añades más
   sensores o bajas el intervalo, conviene definir una retención en el bucket
@@ -53,8 +53,9 @@ versión 1 esté funcionando de forma estable.
   datos de más de unas semanas de antigüedad.
 - **Exponer el estado del propio colector.** Un pequeño endpoint HTTP interno
   (`/salud`) en el colector Go que devuelva la última lectura correcta de
-  cada sensor y cuándo ocurrió, para poder monitorizar "quién vigila al
-  vigilante" (por ejemplo con un chequeo simple de Uptime Kuma o similar).
+  cada sensor y cuándo ocurrió — complementaría bien al watchdog de
+  systemd de arriba, permitiendo monitorizar el colector también desde
+  fuera (por ejemplo Uptime Kuma).
 
 ## Media prioridad
 

@@ -14,10 +14,25 @@ contactPoints:
             {{ if eq .Status "firing" }}🔴 ALERTA{{ else }}🟢 RESUELTA{{ end }} · {{ .CommonLabels.alertname }}
           message: |-
             {{ range .Alerts }}
-            {{ if eq .Status "firing" }}🔴 FUERA DE RANGO{{ else }}🟢 NORMALIZADO{{ end }}  —  {{ .Labels.ubicacion }} ({{ .Labels.sensor_id }})
+            {{ if eq .Labels.alertname "Sensor CPD sin datos" }}
+            {{ if eq .Status "firing" }}🔴 SIN DATOS{{ else }}🟢 RECIBIENDO DATOS{{ end }}  —  Colector CPD Monitor
 
-            Valor: {{ printf "%.1f" (index .Values "B") }}{{ if eq .Labels.alertname "Temperatura CPD fuera de rango" }}°C  (rango normal: 18-27°C){{ else }}%H  (rango normal: 40-60%H){{ end }}
+            {{ if eq .Status "firing" }}El sensor no ha enviado lecturas en los últimos 10 minutos.
+            Desde: {{ .StartsAt.Local.Format "15:04" }} · {{ .StartsAt.Local.Format "02/01/2006" }}{{ else }}El sensor ha vuelto a enviar datos con normalidad.
+            Resuelto: {{ .EndsAt.Local.Format "15:04" }} · {{ .EndsAt.Local.Format "02/01/2006" }}{{ end }}
+
+            {{ else if eq .Labels.alertname "Batería CPD baja" }}
+            {{ if eq .Status "firing" }}🔋 BATERÍA BAJA{{ else }}🟢 BATERÍA NORMALIZADA{{ end }}  —  {{ .Labels.ubicacion }} ({{ .Labels.sensor_id }})
+
+            {{ if eq (len .Values) 0 }}{{ if eq .Status "firing" }}No se ha podido leer el nivel de batería.{{ else }}El nivel de batería vuelve a leerse con normalidad.{{ end }}{{ else }}Nivel: {{ printf "%.0f" (index .Values "A") }}% (aviso por debajo del 10%){{ end }}
             {{ if eq .Status "firing" }}Desde: {{ .StartsAt.Local.Format "15:04" }}{{ else }}Resuelto: {{ .EndsAt.Local.Format "15:04" }}{{ end }} · {{ .StartsAt.Local.Format "02/01/2006" }}
+
+            {{ else }}
+            {{ if eq .Status "firing" }}🔴 {{ if eq (len .Values) 0 }}SIN DATOS{{ else }}FUERA DE RANGO{{ end }}{{ else }}🟢 NORMALIZADO{{ end }}  —  {{ .Labels.ubicacion }} ({{ .Labels.sensor_id }})
+
+            {{ if eq (len .Values) 0 }}No se han recibido lecturas de este sensor.{{ else }}Valor: {{ printf "%.1f" (index .Values "B") }}{{ if eq .Labels.alertname "Temperatura CPD fuera de rango" }}°C  (rango normal: 18-27°C){{ else }}%H  (rango normal: 40-60%H){{ end }}{{ end }}
+            {{ if eq .Status "firing" }}Desde: {{ .StartsAt.Local.Format "15:04" }}{{ else }}Resuelto: {{ .EndsAt.Local.Format "15:04" }}{{ end }} · {{ .StartsAt.Local.Format "02/01/2006" }}
+            {{ end }}
 
             📊 Ver dashboard: ${GRAFANA_PUBLIC_URL}/d/cpd-temp-humedad
             {{ end }}

@@ -7,3 +7,11 @@ policies:
     group_wait: 10s
     group_interval: 10s
     repeat_interval: 30m
+    routes:
+      - receiver: email-cpd
+        object_matchers:
+          - ['alertname', '=~', 'Sensor CPD sin datos']
+        group_by: ['alertname']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 24h
