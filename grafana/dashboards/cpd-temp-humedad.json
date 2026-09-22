@@ -2,7 +2,7 @@
   "title": "CPD - Temperatura y Humedad",
   "uid": "cpd-temp-humedad",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "timezone": "browser",
   "refresh": "1m",
@@ -48,11 +48,11 @@
               },
               {
                 "color": "orange",
-                "value": 27
+                "value": 30
               },
               {
                 "color": "red",
-                "value": 30
+                "value": 33
               }
             ]
           }
@@ -119,15 +119,15 @@
               },
               {
                 "color": "green",
-                "value": 40
+                "value": 25
               },
               {
                 "color": "orange",
-                "value": 60
+                "value": 55
               },
               {
                 "color": "red",
-                "value": 70
+                "value": 60
               }
             ]
           }
@@ -168,7 +168,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 18
+        "y": 26
       },
       "datasource": {
         "type": "influxdb",
@@ -186,11 +186,11 @@
               },
               {
                 "color": "orange",
-                "value": 27
+                "value": 30
               },
               {
                 "color": "red",
-                "value": 30
+                "value": 33
               }
             ]
           }
@@ -209,7 +209,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\n  |> filter(fn: (r) => r.sensor_id == \"sensor1\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\"])",
+          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\n  |> filter(fn: (r) => r.sensor_id == \"sensor1\")\n  |> last()\n  |> keep(columns: [\"_time\",\"_value\", \"sensor_id\"])",
           "datasource": {
             "type": "influxdb",
             "uid": "influxdb-cpd"
@@ -225,7 +225,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 18
+        "y": 26
       },
       "datasource": {
         "type": "influxdb",
@@ -243,15 +243,15 @@
               },
               {
                 "color": "green",
-                "value": 40
+                "value": 25
               },
               {
                 "color": "orange",
-                "value": 60
+                "value": 55
               },
               {
                 "color": "red",
-                "value": 70
+                "value": 60
               }
             ]
           }
@@ -286,7 +286,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 18
+        "y": 26
       },
       "datasource": {
         "type": "influxdb",
@@ -327,13 +327,236 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"bateria_pct\")\n  |> filter(fn: (r) => r.sensor_id == \"sensor1\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\"])",
+          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -6h)\n  |> filter(fn:(r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"bateria_pct\")\n |> filter(fn: (r) => r.sensor_id == \"sensor1\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\"])",
           "datasource": {
             "type": "influxdb",
             "uid": "influxdb-cpd"
           }
         }
       ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Temperatura actual — Sensor 2",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 32
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-cpd"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 33
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\n  |> filter(fn: (r) => r.sensor_id == \"sensor2\")\n  |> last()\n  |> keep(columns: [\"_time\",\"_value\", \"sensor_id\"])",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-cpd"
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Humedad actual — Sensor 2",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 32
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-cpd"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "humidity",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 25
+              },
+              {
+                "color": "orange",
+                "value": 55
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"humedad_rel_pct\")\n  |> filter(fn: (r) => r.sensor_id == \"sensor2\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\"])",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-cpd"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Batería — Sensor 2",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 32
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-cpd"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 40
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -6h)\n  |> filter(fn:(r) => r._measurement == \"cpd_ambiente\")\n  |> filter(fn: (r) => r._field == \"bateria_pct\")\n |> filter(fn: (r) => r.sensor_id == \"sensor2\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\"])",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-cpd"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "alertlist",
+      "title": "Estado de alertas",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "options": {
+        "showOptions": "current",
+        "maxItems": 10,
+        "sortOrder": 1,
+        "dashboardAlerts": false,
+        "alertName": "",
+        "alertInstanceLabelFilter": "",
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": true,
+          "normal": true,
+          "error": true
+        },
+        "folder": "CPD - Monitorización ambiental",
+        "viewMode": "list"
+      }
+    },
+    {
+      "id": 10,
+      "type": "annolist",
+      "title": "Historial de alertas (disparos y resoluciones)",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 18
+      },
+      "options": {
+        "onlyFromThisDashboard": true,
+        "onlyInTimeRange": false,
+        "limit": 50,
+        "showUser": false,
+        "showTime": true,
+        "showTags": true,
+        "navigateToPanel": true
+      }
     }
   ]
 }

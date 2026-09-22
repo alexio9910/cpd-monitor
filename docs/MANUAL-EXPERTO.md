@@ -7,7 +7,9 @@ sección que necesites.
 
 > 📄 Si necesitas el detalle técnico de por qué se construyó así (para
 > desarrolladores), consulta `docs/ARQUITECTURA.md`. Este manual es la
-> versión práctica, orientada a "¿qué hago si...?".
+> versión práctica, orientada a "¿qué hago si...?". Para el detalle
+> exacto de cómo están configuradas las alertas (umbrales, tiempos de
+> evaluación, por qué se ajustó cada cosa), consulta `docs/ALERTAS.md`.
 
 ---
 
@@ -39,7 +41,7 @@ en gráficas y avisa por email si algo se sale de rango.
 Sensor Bluetooth → Raspberry Pi (colector) → Base de datos → Grafana → Tú
 ```
 
-Todo corre **dentro de la Raspberry Pi** (IP `IP_DE_TU_RASPBERRY` en tu red
+Todo corre **dentro de la Raspberry Pi** (IP `192.168.169.5` en tu red
 local) — no depende de ningún servicio externo ni de internet, salvo para
 mandar los emails de alerta.
 
@@ -47,7 +49,7 @@ mandar los emails de alerta.
 
 ## 2. Cómo leer el dashboard de Grafana
 
-Entra en `http://IP_DE_TU_RASPBERRY:3000` desde cualquier navegador de la red
+Entra en `http://192.168.169.5:3000` desde cualquier navegador de la red
 local. Usuarios disponibles:
 
 | Usuario | Para qué sirve |
@@ -55,16 +57,23 @@ local. Usuarios disponibles:
 | `admin` | Gestionar el sistema (editar, borrar, configurar). Contraseña en `.env` → `GRAFANA_ADMIN_PASSWORD`. |
 | `visor` | Solo ver las gráficas, sin poder tocar nada. Para dar acceso a quien solo necesite consultar. Contraseña en `.env` → `GRAFANA_VIEWER_PASSWORD`. |
 
-Abre el dashboard **"CPD - Temperatura y Humedad"**. Los paneles:
+Abre el dashboard **"CPD - Temperatura y Humedad"**. Los paneles, de arriba
+a abajo:
 
 - **Temperatura (°C) / Humedad relativa (%H)** — gráficas de las últimas
-  24h. Si hay dos sensores, cada uno aparece como una línea de color
-  distinto (mira la leyenda debajo de cada gráfica).
-- **Temperatura actual / Humedad actual / Batería — Sensor 1** — el
-  último valor de ese sensor concreto, con colores: **verde** = normal,
-  **naranja** = acercándose al límite, **rojo** = fuera de rango.
-- Si añades un segundo sensor, tendrá sus propios tres paneles
-  "— Sensor 2" (ver sección 7).
+  24h con ambos sensores, cada uno como una línea de color distinto (mira
+  la leyenda debajo de cada gráfica).
+- **Estado de alertas** — un semáforo con las 4 reglas de alerta
+  (temperatura, humedad, batería, sin datos) y su estado actual, para ver
+  de un vistazo si hay algo activo sin tener que ir a "Alerting".
+- **Historial de alertas** — una tabla cronológica de cuándo se disparó y
+  se resolvió cada alerta, sin tener que entrar en la Raspberry Pi ni en
+  los emails.
+- **Temperatura actual / Humedad actual / Batería — Sensor 1 y Sensor 2**
+  — el último valor de cada sensor, con colores: **verde** = normal,
+  **naranja** = acercándose al límite, **rojo** = fuera de rango. Si
+  añades un tercer sensor, tendrá sus propios tres paneles "— Sensor 3"
+  (ver sección 7).
 
 ---
 
@@ -79,19 +88,21 @@ El asunto empieza siempre con:
 Cuando llegue un **🔴 ALERTA**:
 
 1. Mira el cuerpo del correo: te dice el sensor, la ubicación, el valor
-   exacto y desde cuándo.
+   exacto y desde cuándo. El propio correo distingue si es una alerta de
+   temperatura/humedad fuera de rango, de batería baja, o de "sin datos".
 2. Entra en el dashboard (enlace incluido en el propio correo) para ver
-   si es un pico puntual o una tendencia sostenida.
+   si es un pico puntual o una tendencia sostenida — los paneles de
+   "Estado de alertas" e "Historial de alertas" te dan el contexto sin
+   tener que hacer nada más.
 3. Si puedes, revisa físicamente el CPD (¿puerta abierta, aire
    acondicionado apagado, algo bloqueando la ventilación?).
 4. Si en unos minutos no llega el **🟢 RESUELTA**, el problema sigue
    activo — actúa según lo que hayas visto en el paso 3, o avisa a
    alguien que pueda intervenir físicamente en el CPD.
 
-**Si llega una alerta sin ningún valor** (o el asunto menciona
-"sin datos"): no es un problema de temperatura, es que **el propio
-colector ha dejado de mandar datos** — ver sección 9, "No llegan datos al
-dashboard".
+**Si llega una alerta de "sin datos"**: no es un problema de temperatura,
+es que **el propio colector ha dejado de mandar datos** — ver sección 9,
+"No llegan datos al dashboard".
 
 ---
 
@@ -102,7 +113,7 @@ solo hay una referencia a una variable, no las direcciones en sí) — se
 cambian en tu fichero de secretos local:
 
 ```bash
-ssh usuario@IP_DE_TU_RASPBERRY
+ssh cpd@192.168.169.5
 cd ~/cpd-monitor
 nano .env
 ```
@@ -130,20 +141,38 @@ Prueba que llega bien: en Grafana → **Alerting → Contact points →
 
 ## 5. Cambiar los rangos normales de temperatura/humedad
 
-Esto se edita desde la propia interfaz de Grafana, no hace falta tocar
-ficheros:
+Desde la versión actual, **las reglas de alerta están provisionadas por
+fichero** (`grafana/provisioning/alerting/rules.yaml`), no se crean ni
+editan libremente desde la interfaz — esto es intencionado: así quedan
+versionadas en Git y no se pueden perder ni desconfigurar sin que quede
+constancia en el propio código. Si entras en Grafana → Alerting → Alert
+rules e intentas editar una regla desde ahí, verás un aviso de que está
+"provisioned" y no dejará guardar cambios en la interfaz.
 
-1. Entra como `admin` → **Alerting → Alert rules**.
-2. Abre la regla que quieras cambiar ("Temperatura CPD fuera de rango" o
-   "Humedad CPD fuera de rango").
-3. En la sección de condiciones (Threshold), cambia los números `18` y
-   `27` (temperatura) o `40` y `60` (humedad) por los que necesites.
-4. Baja hasta el final y pulsa **"Save rule and exit"**.
+Para cambiar un rango, edita el fichero directamente **en tu WSL** (no en
+la Pi — ver la nota de la sección 7 sobre por qué):
 
-Los colores del dashboard (verde/naranja/rojo) son independientes y viven
-en `grafana/dashboards/cpd-temp-humedad.json` — si quieres que coincidan
-exactamente con los nuevos rangos, pide ayuda técnica para ese fichero en
-concreto (es más delicado de editar a mano).
+```bash
+cd ~/cpd-monitor
+nano grafana/provisioning/alerting/rules.yaml
+```
+
+Busca el bloque de la regla que quieras cambiar (`title: Humedad CPD fuera
+de rango` o `title: Temperatura CPD fuera de rango`) y dentro de él la
+sección `evaluator.params`, con los dos números del rango actual
+(**18 y 33** para temperatura, **25 y 60** para humedad). Cámbialos por
+los que necesites.
+
+Actualiza también el texto del email en
+`grafana/provisioning/alerting/contactpoints.yaml` (busca `rango normal:`)
+para que el mensaje que reciben las personas avisadas diga el rango
+correcto — y, si quieres que los colores del dashboard
+(verde/naranja/rojo) coincidan con los nuevos rangos, los umbrales viven
+en `grafana/dashboards/cpd-temp-humedad.json` (busca `"thresholds"` en
+cada panel).
+
+Guarda, haz `git add`, `commit` y `push`, y despliega (`git pull` +
+`docker compose restart grafana` en la Pi, o `./deploy.sh`).
 
 ---
 
@@ -166,15 +195,23 @@ selecciona el usuario → **Change password**.
 
 ## 7. Añadir o quitar un sensor
 
-Procedimiento completo cuando llegue el segundo sensor físico (o
-cualquier sensor adicional en el futuro). No hace falta recompilar nada.
+Procedimiento completo para un sensor adicional (tercero, cuarto...). No
+hace falta recompilar nada.
+
+> ⚠️ **Hazlo siempre desde tu WSL, no directamente en la Raspberry Pi.**
+> Ediciones hechas directo en la Pi (`config.yaml`, el dashboard JSON...)
+> sin pasar por Git han hecho que el repositorio y la Pi se
+> desincronizaran más de una vez, con riesgo real de perder cambios al
+> hacer `push`/`pull` después. El flujo correcto es: editar y ejecutar
+> el script en tu copia de WSL → `git add`/`commit`/`push` →
+> `./deploy.sh` (o `git pull` + reinicio manual en la Pi).
 
 ### 7.1 — Encuentra la MAC del sensor nuevo
 
 Con el sensor encendido y cerca de la Raspberry Pi:
 
 ```bash
-ssh cpd@IP_DE_TU_RASPBERRY
+ssh cpd@192.168.169.5
 bluetoothctl
 scan on
 ```
@@ -189,6 +226,8 @@ exit
 
 ### 7.2 — Añádelo a la configuración
 
+En tu WSL:
+
 ```bash
 cd ~/cpd-monitor
 nano config.yaml
@@ -197,44 +236,56 @@ nano config.yaml
 Añade un bloque nuevo bajo `sensores:` (respeta la sangría exacta):
 
 ```yaml
-  - id: "sensor2"
+  - id: "sensor3"
     mac: "AA:BB:CC:DD:EE:FF"
-    ubicacion: "Sensor 2"
+    ubicacion: "Sensor 3"
 ```
 
-Guarda y despliega:
+`config.yaml` no se sube a GitHub (contiene datos de sensores reales,
+aunque sin secretos), así que además de guardarlo en tu WSL tendrás que
+copiarlo también a la Pi cuando despliegues:
 
 ```bash
-sudo cp config.yaml /opt/cpd-monitor/config.yaml
-sudo chown cpdmonitor:cpdmonitor /opt/cpd-monitor/config.yaml
-sudo systemctl restart cpd-monitor
-journalctl -u cpd-monitor -f
+scp config.yaml cpd@192.168.169.5:~/cpd-monitor/config.yaml
+ssh cpd@192.168.169.5 '
+  sudo cp ~/cpd-monitor/config.yaml /opt/cpd-monitor/config.yaml &&
+  sudo chown cpdmonitor:cpdmonitor /opt/cpd-monitor/config.yaml &&
+  sudo systemctl restart cpd-monitor &&
+  journalctl -u cpd-monitor -n 20 --no-pager
+'
 ```
 
-Deberías ver una línea por sensor cada minuto. `Ctrl+C` para salir.
+Deberías ver una línea por sensor cada minuto en esa última salida.
 
 ### 7.3 — Añade sus paneles de "valor actual" en Grafana
 
 Las gráficas grandes (Temperatura, Humedad) **ya muestran el sensor
 nuevo solas**, sin tocar nada. Los tres paneles pequeños de "valor
-actual" (Temperatura, Humedad, Batería) sí hay que crearlos — con un
-script ya preparado para ello, en vez de copiarlos a mano en la
-interfaz:
+actual" (Temperatura, Humedad, Batería) sí hay que crearlos — con el
+script ya preparado para ello, ejecutado **en tu WSL**:
 
-````bash
+```bash
 cd ~/cpd-monitor
-python3 scripts/anadir_sensor_dashboard.py sensor2 "Sensor 2"
-docker compose restart grafana
-````
+python3 scripts/anadir_sensor_dashboard.py sensor3 "Sensor 3"
+```
 
 El primer argumento es el mismo `id` que pusiste en `config.yaml`
 (sección 7.2); el segundo, el texto que quieres que aparezca en el
 título de los paneles. El script duplica los tres paneles de plantilla
 (los de `sensor1`), les cambia el filtro y el título, y los coloca
-automáticamente en una fila nueva debajo de los existentes — sirve
-igual para un tercer sensor, un cuarto, etc. Si lo ejecutas dos veces
-para el mismo sensor, detecta que ya existen y no hace nada (no
-duplica).
+automáticamente en una fila nueva debajo de los existentes. Si lo
+ejecutas dos veces para el mismo sensor, detecta que ya existen y no
+hace nada (no duplica).
+
+Después, sube el cambio y despliega:
+
+```bash
+git add -A && git commit -m "Añade sensor3 al dashboard" && git push
+./deploy.sh
+```
+
+(o, si no usas `deploy.sh`: `git pull` en la Pi seguido de
+`docker compose restart grafana`).
 
 ### 7.4 — Las alertas no requieren ningún cambio
 
@@ -255,7 +306,7 @@ Todo esto es seguro de ejecutar, no borra datos:
 | Reiniciar Grafana | `docker compose restart grafana` (dentro de `~/cpd-monitor`) |
 | Reiniciar InfluxDB (la base de datos) | `docker compose restart influxdb` |
 | Reiniciar TODO (tras un corte de luz, etc.) | Simplemente enciende la Raspberry Pi — todo arranca solo |
-| Guardar un cambio de configuración en GitHub | `git add -A && git commit -m "describe aquí qué cambiaste"` y luego `git push` |
+| Guardar un cambio de configuración en GitHub | Desde tu WSL: `git add -A && git commit -m "..."` y `git push`, luego `./deploy.sh` (o `git pull` en la Pi) |
 | Ver cuánto espacio ocupan los logs | `journalctl --disk-usage` |
 
 ### Retención y rotación de logs
@@ -384,9 +435,10 @@ nunca abriendo los ficheros `.journal` a mano):
 | Síntoma | Probablemente | Qué hacer |
 |---|---|---|
 | No veo datos nuevos en el dashboard | El colector no está leyendo el sensor | `journalctl -u cpd-monitor -f` y mira el último error. Si dice "no se pudo conectar", acércate al sensor o revisa su batería. |
-| Me llega una alerta de "sin datos" | El colector está parado o la Pi tiene un problema | `sudo systemctl status cpd-monitor`. Si no está "active (running)", `sudo systemctl restart cpd-monitor`. |
+| Me llega una alerta de "sin datos" | El colector está parado o la Pi tiene un problema | `sudo systemctl status cpd-monitor`. Si no está "active (running)", `sudo systemctl restart cpd-monitor`. Si aparece "active (running)" pero llevas rato sin ver líneas nuevas en `journalctl -u cpd-monitor -f`, el proceso puede estar colgado sin que systemd lo detecte (ver `docs/MEJORAS-FUTURAS.md`, "Watchdog de systemd") — en ese caso, reinícialo igualmente a mano. |
 | No puedo entrar en Grafana | El contenedor está caído, o la Pi está apagada | Conéctate por SSH y prueba `docker compose ps`. Si `cpd-grafana` no aparece "Up", `docker compose up -d`. |
 | No me llegan alertas por email pero el dashboard sí tiene datos | Problema del servidor SMTP, no del colector | En Grafana → Alerting → Contact points → `email-cpd` → **Test**. Si falla, avisa a IT sobre la cuenta de correo configurada en `GRAFANA_SMTP_USER` (dentro de `.env`). |
+| No puedo editar una regla de alerta desde la interfaz | Las reglas están provisionadas por fichero (intencionado) | Edita `grafana/provisioning/alerting/rules.yaml` directamente — ver sección 5. |
 | Nada de lo anterior funciona | — | Copia el mensaje de error exacto (de `journalctl` o de la pantalla) y pásalo a soporte técnico — con el error literal se resuelve mucho más rápido que describiéndolo de memoria. |
 
 ---
@@ -395,13 +447,15 @@ nunca abriendo los ficheros `.journal` a mano):
 
 | Qué | Dónde |
 |---|---|
-| Raspberry Pi (IP) | `IP_DE_TU_RASPBERRY`, usuario SSH `cpd` |
-| Dashboard de Grafana | `http://IP_DE_TU_RASPBERRY:3000` |
-| InfluxDB (rara vez hace falta entrar directamente) | `http://IP_DE_TU_RASPBERRY:8086` |
+| Raspberry Pi (IP) | `192.168.169.5`, usuario SSH `cpd` |
+| Dashboard de Grafana | `http://192.168.169.5:3000` |
+| InfluxDB (rara vez hace falta entrar directamente) | `http://192.168.169.5:8086` |
 | Carpeta de trabajo del proyecto (en la Pi) | `~/cpd-monitor` |
 | Copia real que usa el servicio | `/opt/cpd-monitor` |
 | Todas las contraseñas y tokens | fichero `.env` dentro de `~/cpd-monitor` (nunca se sube a GitHub) |
 | Configuración de los sensores | `config.yaml` (tampoco se sube a GitHub) |
+| Reglas de alerta (versionadas) | `grafana/provisioning/alerting/rules.yaml` |
+| Detalle de configuración de alertas | `docs/ALERTAS.md` |
 | Repositorio en GitHub | `github.com/alexio9910/cpd-monitor` |
 
 > ⚠️ `.env` y `config.yaml` contienen contraseñas y tokens reales.
@@ -416,7 +470,8 @@ router (DHCP), que **puede cambiar** con el tiempo (por ejemplo, tras un
 corte de luz largo o un reinicio del router). Si cambia, dejan de
 funcionar: el enlace al dashboard que llevan los emails de alerta, el
 acceso por SSH que tengas guardado, y `deploy.sh`. Conviene fijarla en
-cuanto el sistema pase a producción de verdad.
+cuanto el sistema pase a producción de verdad — la IP de este documento
+(`192.168.169.5`) asume que ya está fijada.
 
 Dos formas de hacerlo — elige la que puedas usar:
 
@@ -452,7 +507,7 @@ gestionan la red con **NetworkManager** — la guía antigua de editar
 `/etc/dhcpcd.conf` ya no funciona en instalaciones recientes.
 
 ```bash
-ssh cpd@IP_DE_TU_RASPBERRY
+ssh cpd@192.168.169.5
 nmcli con show
 ```
 Anota el nombre exacto de tu conexión (algo como `Wired connection 1`
@@ -468,8 +523,8 @@ sudo nmcli con mod "Wired connection 1" \
 sudo nmcli con up "Wired connection 1"
 ```
 Sustituye `"Wired connection 1"` por el nombre real del paso anterior,
-`IP_QUE_QUIERAS` por la IP fija deseada (ej. `192.168.1.50`), y
-`IP_DE_TU_ROUTER` por la IP de tu router (normalmente termina en `.1`).
+`IP_QUE_QUIERAS` por la IP fija deseada, y `IP_DE_TU_ROUTER` por la IP de
+tu router (normalmente termina en `.1`).
 
 Comprueba que se aplicó:
 ```bash
@@ -482,7 +537,7 @@ Si la IP nueva es distinta a la que tenías, actualiza:
 
 - `GRAFANA_PUBLIC_URL` en `.env` (el enlace de los emails de alerta):
 ```bash
-  nano .env   # cambia GRAFANA_PUBLIC_URL=http://IP_ANTIGUA:3000
+  nano .env   # GRAFANA_PUBLIC_URL=http://IP_NUEVA:3000
   docker compose up -d --force-recreate grafana
 ```
 - `PI_HOST` en el `.env` de tu WSL, si usas `deploy.sh`.
@@ -513,11 +568,11 @@ simple y predecible para este caso.
 Con el sistema funcionando con normalidad:
 
 ```bash
-ssh usuario@IP_DE_TU_RASPBERRY
+ssh cpd@192.168.169.5
 mkdir -p ~/backup-temp
 sudo tar --numeric-owner -czvf ~/backup-temp/backup-tar-$(date +%Y%m%d).tar.gz \
   --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/tmp \
-  --exclude=/mnt --exclude=/home/usuario/backup-temp / 2>&1 | tail -20
+  --exclude=/mnt --exclude=/home/cpd/backup-temp / 2>&1 | tail -20
 echo "Codigo de salida: ${PIPESTATUS[0]}"
 ```
 
@@ -537,10 +592,10 @@ significar avisos del tipo `file changed as we read it` (algún fichero,
 típicamente de InfluxDB, cambió justo mientras se copiaba). Cualquier
 otro código merece revisión.
 
-Bájalo a tu ordenador con `scp`, desde tu máquina de desarrollo:
+Bájalo a tu ordenador con `scp`, desde tu WSL:
 
 ```bash
-scp usuario@IP_DE_TU_RASPBERRY:~/backup-temp/backup-tar-*.tar.gz ~/Downloads/
+scp cpd@192.168.169.5:~/backup-temp/backup-tar-*.tar.gz ~/Downloads/
 ```
 
 Y limpia la copia temporal de la Pi una vez confirmado que llegó bien:
@@ -561,13 +616,13 @@ rm -rf ~/backup-temp
    una vez para que termine su configuración inicial.
 2. Copia el `.tar.gz` a la nueva Pi:
 ```bash
-   scp backup-tar-AAAAMMDD.tar.gz usuario@IP_DE_LA_NUEVA_PI:~/
+   scp backup-tar-AAAAMMDD.tar.gz cpd@IP_DE_LA_NUEVA_PI:~/
 ```
 3. Extráelo sobre la raíz del sistema (con cuidado: esto sobrescribe
    ficheros del sistema — hazlo solo en una instalación recién hecha,
    nunca sobre un sistema ya en uso):
 ```bash
-   ssh usuario@IP_DE_LA_NUEVA_PI
+   ssh cpd@IP_DE_LA_NUEVA_PI
    sudo tar --numeric-owner -xzvf ~/backup-tar-AAAAMMDD.tar.gz -C /
 ```
 4. Reinicia y verifica que todo volvió igual (`docker ps`,
@@ -585,6 +640,7 @@ rm -rf ~/backup-temp
 | InfluxDB | La base de datos donde se guarda el histórico de lecturas. |
 | Grafana | La web que dibuja las gráficas y manda las alertas. |
 | Contact point | En Grafana, a quién/cómo se envía una alerta (en nuestro caso, email). |
+| Provisioning | Configuración de Grafana definida por fichero (versionada en Git) en vez de creada a mano desde la interfaz. |
 | SMTP | El servidor de correo que Grafana usa para poder enviar emails. |
 | BLE / Bluetooth Low Energy | El tipo de Bluetooth de bajo consumo que usan los sensores Sensirion. |
 | Systemd / servicio | El mecanismo de Linux que arranca el colector solo y lo reinicia si falla. |
