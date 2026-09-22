@@ -2,7 +2,7 @@
   "title": "CPD - Temperatura y Humedad",
   "uid": "cpd-temp-humedad",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "timezone": "browser",
   "refresh": "1m",
@@ -280,7 +280,7 @@
     },
     {
       "id": 5,
-      "type": "stat",
+      "type": "gauge",
       "title": "Batería — Sensor 1",
       "gridPos": {
         "h": 6,
@@ -311,7 +311,9 @@
                 "value": 40
               }
             ]
-          }
+          },
+          "min": 0,
+          "max": 100
         },
         "overrides": []
       },
@@ -321,8 +323,9 @@
             "lastNotNull"
           ]
         },
-        "graphMode": "none",
-        "colorMode": "background"
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -455,7 +458,7 @@
     },
     {
       "id": 8,
-      "type": "stat",
+      "type": "gauge",
       "title": "Batería — Sensor 2",
       "gridPos": {
         "h": 6,
@@ -486,7 +489,9 @@
                 "value": 40
               }
             ]
-          }
+          },
+          "min": 0,
+          "max": 100
         },
         "overrides": []
       },
@@ -496,8 +501,9 @@
             "lastNotNull"
           ]
         },
-        "graphMode": "none",
-        "colorMode": "background"
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -558,5 +564,21 @@
         "navigateToPanel": true
       }
     }
-  ]
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "name": "Alertas (disparo/resolución)",
+        "type": "dashboard"
+      }
+    ]
+  }
 }
