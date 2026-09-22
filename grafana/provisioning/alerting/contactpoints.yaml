@@ -14,10 +14,10 @@ contactPoints:
             {{ if eq .Status "firing" }}🔴 ALERTA{{ else }}🟢 RESUELTA{{ end }} · {{ .CommonLabels.alertname }}
           message: |-
             {{ range .Alerts }}
-            {{ if eq .Labels.alertname "Sensor CPD sin datos" }}
-            {{ if eq .Status "firing" }}🔴 SIN DATOS{{ else }}🟢 RECIBIENDO DATOS{{ end }}  —  Colector CPD Monitor
+            {{ if contains "sin datos" .Labels.alertname }}
+            {{ if eq .Status "firing" }}🔴 SIN DATOS{{ else }}🟢 RECIBIENDO DATOS{{ end }}  —  {{ .Labels.sensor_id }}{{ if .Labels.ubicacion }} ({{ .Labels.ubicacion }}){{ end }}
 
-            {{ if eq .Status "firing" }}El sensor no ha enviado lecturas en los últimos 10 minutos.
+            {{ if eq .Status "firing" }}Este sensor no ha enviado lecturas en los últimos 10 minutos, aunque otros sensores sigan funcionando con normalidad.
             Desde: {{ .StartsAt.Local.Format "15:04" }} · {{ .StartsAt.Local.Format "02/01/2006" }}{{ else }}El sensor ha vuelto a enviar datos con normalidad.
             Resuelto: {{ .EndsAt.Local.Format "15:04" }} · {{ .EndsAt.Local.Format "02/01/2006" }}{{ end }}
 
