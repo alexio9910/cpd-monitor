@@ -226,71 +226,46 @@ exit
 
 ### 7.2 — Añádelo a la configuración
 
-En tu WSL:
+Ver sección 7.3 más abajo — `scripts/gestionar_sensor.py` hace este paso
+y el siguiente a la vez, en un solo comando. `config.yaml` no se sube a
+GitHub (contiene datos de sensores reales, aunque sin secretos), así que
+recuerda copiarlo también a la Pi — el propio script te da el comando
+exacto al terminar.
+
+### 7.2 y 7.3 juntos — un solo comando
+
+En vez de editar `config.yaml` y el dashboard por separado, usa
+`scripts/gestionar_sensor.py` **en tu WSL** — hace las dos cosas de una
+vez:
 
 ```bash
 cd ~/cpd-monitor
-nano config.yaml
+python3 scripts/gestionar_sensor.py añadir sensor3 "AA:BB:CC:DD:EE:FF" "Sensor 3"
 ```
 
-Añade un bloque nuevo bajo `sensores:` (respeta la sangría exacta):
+Añade el bloque a `config.yaml`, duplica los tres paneles de plantilla
+(temperatura, humedad, batería — batería como `gauge`) cambiándoles el
+filtro y el título, y los coloca en una fila nueva debajo de las
+existentes. Si el sensor ya existe en cualquiera de los dos sitios, no
+toca nada (no duplica). Al terminar, el propio script te imprime los
+comandos exactos que faltan: copiar `config.yaml` a la Pi, reiniciar el
+colector, y el commit/push.
 
-```yaml
-  - id: "sensor3"
-    mac: "AA:BB:CC:DD:EE:FF"
-    ubicacion: "Sensor 3"
-```
-
-`config.yaml` no se sube a GitHub (contiene datos de sensores reales,
-aunque sin secretos), así que además de guardarlo en tu WSL tendrás que
-copiarlo también a la Pi cuando despliegues:
+Para quitar un sensor, el mismo script a la inversa:
 
 ```bash
-scp config.yaml cpd@192.168.169.5:~/cpd-monitor/config.yaml
-ssh cpd@192.168.169.5 '
-  sudo cp ~/cpd-monitor/config.yaml /opt/cpd-monitor/config.yaml &&
-  sudo chown cpdmonitor:cpdmonitor /opt/cpd-monitor/config.yaml &&
-  sudo systemctl restart cpd-monitor &&
-  journalctl -u cpd-monitor -n 20 --no-pager
-'
+python3 scripts/gestionar_sensor.py quitar sensor3
 ```
 
-Deberías ver una línea por sensor cada minuto en esa última salida.
-
-### 7.3 — Añade sus paneles de "valor actual" en Grafana
-
-Las gráficas grandes (Temperatura, Humedad) **ya muestran el sensor
-nuevo solas**, sin tocar nada. Los tres paneles pequeños de "valor
-actual" (Temperatura, Humedad, Batería) sí hay que crearlos — con el
-script ya preparado para ello, ejecutado **en tu WSL**:
-
-```bash
-cd ~/cpd-monitor
-python3 scripts/anadir_sensor_dashboard.py sensor3 "Sensor 3"
-```
-
-El primer argumento es el mismo `id` que pusiste en `config.yaml`
-(sección 7.2); el segundo, el texto que quieres que aparezca en el
-título de los paneles. El script duplica los tres paneles de plantilla
-(los de `sensor1`), les cambia el filtro y el título, y los coloca
-automáticamente en una fila nueva debajo de los existentes. Si lo
-ejecutas dos veces para el mismo sensor, detecta que ya existen y no
-hace nada (no duplica).
-
-Después, sube el cambio y despliega:
-
-```bash
-git add -A && git commit -m "Añade sensor3 al dashboard" && git push
-./deploy.sh
-```
-
-(o, si no usas `deploy.sh`: `git pull` en la Pi seguido de
-`docker compose restart grafana`).
+Quita el bloque de `config.yaml` y los tres paneles del dashboard.
 
 ### 7.4 — Las alertas no requieren ningún cambio
 
-Las reglas de alerta ya cubren automáticamente cualquier sensor que
-exista — no hay que crear reglas nuevas.
+Las 4 reglas de alerta (temperatura, humedad, batería, sin datos) ya
+cubren automáticamente cualquier sensor que exista — incluida la de
+"sin datos", que calcula el tiempo transcurrido desde la última lectura
+de cada sensor sin necesitar su `id` escrito en ningún sitio. No hay que
+crear ni tocar ninguna regla al añadir o quitar un sensor.
 
 ---
 
@@ -456,6 +431,7 @@ nunca abriendo los ficheros `.journal` a mano):
 | Configuración de los sensores | `config.yaml` (tampoco se sube a GitHub) |
 | Reglas de alerta (versionadas) | `grafana/provisioning/alerting/rules.yaml` |
 | Detalle de configuración de alertas | `docs/ALERTAS.md` |
+| Historial de cambios del proyecto | `CHANGELOG.md` |
 | Repositorio en GitHub | `github.com/alexio9910/cpd-monitor` |
 
 > ⚠️ `.env` y `config.yaml` contienen contraseñas y tokens reales.

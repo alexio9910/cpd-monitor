@@ -1,444 +1,350 @@
 apiVersion: 1
 groups:
-    - orgId: 1
-      name: CPD-Ambiente
-      folder: CPD - Monitorización ambiental
-      interval: 1m
-      rules:
-        - uid: afuxuu6wnv4lcd
-          title: Humedad CPD fuera de rango
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: influxdb-cpd
-              model:
-                intervalMs: 1000
-                maxDataPoints: 43200
-                query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -10m)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"humedad_rel_pct\")\r\n  |> last()\r\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
-                refId: A
-            - refId: B
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params: []
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 25
-                            - 60
-                        type: outside_range
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          dashboardUid: cpd-temp-humedad
-          panelId: 2
-          noDataState: NoData
-          execErrState: Error
-          for: 1m
-          keepFiringFor: 30s
-          annotations:
-            __dashboardUid__: cpd-temp-humedad
-            __panelId__: "2"
-          isPaused: false
-          notification_settings:
-            receiver: email-cpd
-          missing_series_evals_to_resolve: 10
-        - uid: dfuxuo0za4mbkb
-          title: Temperatura CPD fuera de rango
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: influxdb-cpd
-              model:
-                intervalMs: 1000
-                maxDataPoints: 43200
-                query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -10m)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\r\n  |> last()\r\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
-                refId: A
-            - refId: B
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params: []
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 18
-                            - 33
-                        type: outside_range
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          dashboardUid: cpd-temp-humedad
-          panelId: 1
-          noDataState: NoData
-          execErrState: Error
-          for: 1m
-          keepFiringFor: 30s
-          annotations:
-            __dashboardUid__: cpd-temp-humedad
-            __panelId__: "1"
-          isPaused: false
-          notification_settings:
-            receiver: email-cpd
-          missing_series_evals_to_resolve: 10
-    - orgId: 1
-      name: CPD-Bateria-Baja
-      folder: CPD - Monitorización ambiental
-      interval: 5m
-      rules:
-        - uid: cfyelk8lp8mbka
-          title: Batería CPD baja
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: influxdb-cpd
-              model:
-                intervalMs: 1000
-                maxDataPoints: 43200
-                query: "from(bucket: \"cpd_monitorizacion\") \r\n|> range(start: -15m) \r\n|> filter(fn: (r) => r._measurement == \"cpd_ambiente\") \r\n|> filter(fn: (r) => r._field == \"bateria_pct\") \r\n|> last() |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
-                refId: A
-            - refId: B
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params: []
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 10
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          dashboardUid: cpd-temp-humedad
-          panelId: 5
-          noDataState: NoData
-          execErrState: Error
-          for: 5m
-          annotations:
-            __dashboardUid__: cpd-temp-humedad
-            __panelId__: "5"
-            description: "La batería de uno de los sensores del CPD ha caído por debajo del 10%. \nRevisa y sustituye la pila (CR2032) antes de que el sensor deje de emitir por completo"
-            summary: "\U0001F50B Batería del sensor CPD baja - Puede necesitar cambio pronto"
-          labels:
-            tipo: bateria_baja
-          isPaused: false
-          notification_settings:
-            receiver: email-cpd
-    - orgId: 1
-      name: CPD-Sin-Datos-Sensor1
-      folder: CPD - Monitorización ambiental
-      interval: 30s
-      rules:
-        - uid: afy888pyx4s1s1
-          title: "\U0001F534 Sensor1 sin datos - Posible fallo de monitorización"
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: influxdb-cpd
-              model:
-                intervalMs: 1000
-                maxDataPoints: 43200
-                query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -10m)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\r\n  |> filter(fn: (r) => r.sensor_id == \"sensor1\")\r\n  |> count()"
-                refId: A
-            - refId: B
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params: []
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                type: reduce
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 1
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          dashboardUid: cpd-temp-humedad
-          panelId: 3
-          noDataState: Alerting
-          execErrState: Error
-          for: 2m
-          annotations:
-            __dashboardUid__: cpd-temp-humedad
-            __panelId__: "3"
-            description: Alerta de disponibilidad del colector CPD Monitor
-            summary: |-
-                El sensor "sensor1" del CPD no ha enviado ninguna lectura en los últimos 10 minutos.
+- orgId: 1
+  name: CPD-Ambiente
+  folder: CPD - Monitorización ambiental
+  interval: 1m
+  rules:
+  - uid: afuxuu6wnv4lcd
+    title: Humedad CPD fuera de rango
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: influxdb-cpd
+      model:
+        intervalMs: 1000
+        maxDataPoints: 43200
+        query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -10m)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"humedad_rel_pct\")\r\n  |> last()\r\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
+        refId: A
+    - refId: B
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params: []
+            type: gt
+          operator:
+            type: and
+          query:
+            params: []
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 1000
+        maxDataPoints: 43200
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        type: reduce
+    - refId: C
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 25
+            - 60
+            type: outside_range
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: B
+        intervalMs: 1000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    dashboardUid: cpd-temp-humedad
+    panelId: 2
+    noDataState: NoData
+    execErrState: Error
+    for: 1m
+    keepFiringFor: 30s
+    annotations:
+      __dashboardUid__: cpd-temp-humedad
+      __panelId__: '2'
+    isPaused: false
+    notification_settings:
+      receiver: email-cpd
+    missing_series_evals_to_resolve: 10
+  - uid: dfuxuo0za4mbkb
+    title: Temperatura CPD fuera de rango
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: influxdb-cpd
+      model:
+        intervalMs: 1000
+        maxDataPoints: 43200
+        query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -10m)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\r\n  |> last()\r\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
+        refId: A
+    - refId: B
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params: []
+            type: gt
+          operator:
+            type: and
+          query:
+            params: []
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 1000
+        maxDataPoints: 43200
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        type: reduce
+    - refId: C
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 18
+            - 33
+            type: outside_range
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: B
+        intervalMs: 1000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    dashboardUid: cpd-temp-humedad
+    panelId: 1
+    noDataState: NoData
+    execErrState: Error
+    for: 1m
+    keepFiringFor: 30s
+    annotations:
+      __dashboardUid__: cpd-temp-humedad
+      __panelId__: '1'
+    isPaused: false
+    notification_settings:
+      receiver: email-cpd
+    missing_series_evals_to_resolve: 10
+- orgId: 1
+  name: CPD-Bateria-Baja
+  folder: CPD - Monitorización ambiental
+  interval: 5m
+  rules:
+  - uid: cfyelk8lp8mbka
+    title: Batería CPD baja
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: influxdb-cpd
+      model:
+        intervalMs: 1000
+        maxDataPoints: 43200
+        query: "from(bucket: \"cpd_monitorizacion\") \r\n|> range(start: -15m) \r\n|> filter(fn: (r) => r._measurement == \"cpd_ambiente\") \r\n|> filter(fn: (r) => r._field == \"bateria_pct\") \r\n|> last() |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
+        refId: A
+    - refId: B
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params: []
+            type: gt
+          operator:
+            type: and
+          query:
+            params: []
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 1000
+        maxDataPoints: 43200
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        type: reduce
+    - refId: C
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 10
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: B
+        intervalMs: 1000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    dashboardUid: cpd-temp-humedad
+    panelId: 5
+    noDataState: NoData
+    execErrState: Error
+    for: 5m
+    annotations:
+      __dashboardUid__: cpd-temp-humedad
+      __panelId__: '5'
+      description: "La batería de uno de los sensores del CPD ha caído por debajo del 10%. \nRevisa y sustituye la pila (CR2032) antes de que el sensor deje de emitir por completo"
+      summary: 🔋 Batería del sensor CPD baja - Puede necesitar cambio pronto
+    labels:
+      tipo: bateria_baja
+    isPaused: false
+    notification_settings:
+      receiver: email-cpd
+- orgId: 1
+  name: CPD-Sin-Datos
+  folder: CPD - Monitorización ambiental
+  interval: 30s
+  rules:
+  - uid: afy888pyx4s1sa
+    title: 🔴 Sensor CPD sin datos - Posible fallo de monitorización
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 2592000
+        to: 0
+      datasourceUid: influxdb-cpd
+      model:
+        intervalMs: 1000
+        maxDataPoints: 43200
+        query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -30d)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with _value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0 / 60.0 }))\r\n  |> keep(columns: [\"_time\", \"_value\", \"sensor_id\", \"ubicacion\"])"
+        refId: A
+    - refId: B
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params: []
+            type: gt
+          operator:
+            type: and
+          query:
+            params: []
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 1000
+        maxDataPoints: 43200
+        reducer: last
+        refId: B
+        type: reduce
+    - refId: C
+      queryType: expression
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 10
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: B
+        intervalMs: 1000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    dashboardUid: cpd-temp-humedad
+    panelId: 1
+    noDataState: Alerting
+    execErrState: Error
+    for: 2m
+    annotations:
+      __dashboardUid__: cpd-temp-humedad
+      __panelId__: '1'
+      description: Alerta de disponibilidad del colector CPD Monitor
+      summary: 'Un sensor del CPD no ha enviado ninguna lectura en más de 10 minutos.
 
-                Esto puede deberse a que el sensor está fuera de alcance, tiene la pila agotada, o hay un problema con el servicio de recolección en la Raspberry Pi.
 
-                Revisa el estado del colector y la conexión Bluetooth del sensor.
-          labels:
-            tipo: sin_datos
-            sensor_id: sensor1
-          isPaused: false
-          notification_settings:
-            receiver: email-cpd
-            group_wait: 10s
-            group_interval: 10s
-            repeat_interval: 1d
-    - orgId: 1
-      name: CPD-Sin-Datos-Sensor2
-      folder: CPD - Monitorización ambiental
-      interval: 30s
-      rules:
-        - uid: afy888pyx4s1s2
-          title: "\U0001F534 Sensor2 sin datos - Posible fallo de monitorización"
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: influxdb-cpd
-              model:
-                intervalMs: 1000
-                maxDataPoints: 43200
-                query: "from(bucket: \"cpd_monitorizacion\")\r\n  |> range(start: -10m)\r\n  |> filter(fn: (r) => r._measurement == \"cpd_ambiente\")\r\n  |> filter(fn: (r) => r._field == \"temperatura_c\")\r\n  |> filter(fn: (r) => r.sensor_id == \"sensor2\")\r\n  |> count()"
-                refId: A
-            - refId: B
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params: []
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                type: reduce
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 1
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          dashboardUid: cpd-temp-humedad
-          panelId: 6
-          noDataState: Alerting
-          execErrState: Error
-          for: 2m
-          annotations:
-            __dashboardUid__: cpd-temp-humedad
-            __panelId__: "6"
-            description: Alerta de disponibilidad del colector CPD Monitor
-            summary: |-
-                El sensor "sensor2" del CPD no ha enviado ninguna lectura en los últimos 10 minutos.
+        Esto puede deberse a que el sensor está fuera de alcance, tiene la pila agotada, o hay un problema con el servicio de recolección en la Raspberry Pi.
 
-                Esto puede deberse a que el sensor está fuera de alcance, tiene la pila agotada, o hay un problema con el servicio de recolección en la Raspberry Pi.
 
-                Revisa el estado del colector y la conexión Bluetooth del sensor.
-          labels:
-            tipo: sin_datos
-            sensor_id: sensor2
-          isPaused: false
-          notification_settings:
-            receiver: email-cpd
-            group_wait: 10s
-            group_interval: 10s
-            repeat_interval: 1d
+        Revisa el estado del colector y la conexión Bluetooth del sensor.'
+    labels:
+      tipo: sin_datos
+    isPaused: false
+    notification_settings:
+      receiver: email-cpd
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1d

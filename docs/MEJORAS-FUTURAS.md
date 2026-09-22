@@ -46,6 +46,22 @@ versión 1 esté funcionando de forma estable.
   un vistazo) e "Historial de alertas" (`annolist`, tabla cronológica de
   disparos y resoluciones). Así se puede ver qué ha pasado sin entrar a
   la Raspberry Pi.
+- ~~**La alerta de "sin datos" no detectaba un sensor caído si otro
+  seguía funcionando.**~~ ✅ Corregido (22/09/2026) — descubierto en
+  caliente: el sensor 1 llevó más de 2 horas sin emitir sin generar
+  ninguna alerta, porque la consulta original (`count()` sobre todos los
+  sensores juntos) hacía desaparecer por completo la serie de un sensor
+  sin lecturas en vez de mostrar un recuento de 0. Rediseñada como una
+  única regla que calcula los minutos transcurridos desde la última
+  lectura de cada sensor (ventana de 30 días en vez de 10 minutos): así
+  cualquier sensor que alguna vez haya reportado sigue devolviendo una
+  fila, cubriendo automáticamente cualquier sensor presente o futuro sin
+  mantenimiento manual. Detalle en `CHANGELOG.md` (22/09/2026).
+- ~~**Gestión de sensores en un solo paso.**~~ ✅ Implementado
+  (22/09/2026) — `scripts/anadir_sensor_dashboard.py` sustituido por
+  `scripts/gestionar_sensor.py añadir|quitar`, que además del dashboard
+  gestiona el bloque de `config.yaml` en un único comando, e imprime al
+  terminar los pasos que faltan (copiar a la Pi, commit/push).
 - **Alertas también por Telegram/Slack.** El contact point de email ya está
   provisionado (`grafana/provisioning/alerting/`); añadir un segundo
   "receiver" del mismo contact point (o uno nuevo) para otro canal es
