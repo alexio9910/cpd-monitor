@@ -2,7 +2,7 @@
   "title": "CPD - Temperatura y Humedad",
   "uid": "cpd-temp-humedad",
   "schemaVersion": 39,
-  "version": 5,
+  "version": 6,
   "editable": true,
   "timezone": "browser",
   "refresh": "1m",
@@ -17,6 +17,19 @@
   ],
   "panels": [
     {
+      "id": 100,
+      "type": "row",
+      "title": "📈 Graficas generales (24h)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "id": 1,
       "type": "timeseries",
       "title": "Temperatura (°C)",
@@ -24,7 +37,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "influxdb",
@@ -93,7 +106,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 10
       },
       "datasource": {
         "type": "influxdb",
@@ -161,6 +174,75 @@
       ]
     },
     {
+      "id": 101,
+      "type": "row",
+      "title": "🚨 Alertas",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 9,
+      "type": "alertlist",
+      "title": "Estado de alertas",
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 0,
+        "y": 20
+      },
+      "options": {
+        "showOptions": "current",
+        "maxItems": 10,
+        "sortOrder": 1,
+        "dashboardAlerts": false,
+        "alertName": "",
+        "alertInstanceLabelFilter": "",
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": true,
+          "normal": true,
+          "error": true
+        },
+        "folder": "CPD - Monitorización ambiental",
+        "viewMode": "list"
+      }
+    },
+    {
+      "id": 102,
+      "type": "text",
+      "title": "Historial completo",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 20
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### 📜 Historial completo\n\nEl detalle de cada disparo/resolución (con hora exacta y valores) está disponible entrando en cualquier regla desde el panel de la izquierda, o directamente en:\n\n**[Alerting → History](/alerting/list)**\n\n(usa el filtro de fechas para buscar un periodo concreto)"
+      }
+    },
+    {
+      "id": 103,
+      "type": "row",
+      "title": "🌡️ Sensor 1",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "id": 3,
       "type": "stat",
       "title": "Temperatura actual — Sensor 1",
@@ -168,7 +250,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 26
+        "y": 29
       },
       "datasource": {
         "type": "influxdb",
@@ -225,7 +307,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 26
+        "y": 29
       },
       "datasource": {
         "type": "influxdb",
@@ -286,7 +368,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 26
+        "y": 29
       },
       "datasource": {
         "type": "influxdb",
@@ -339,6 +421,19 @@
       ]
     },
     {
+      "id": 104,
+      "type": "row",
+      "title": "🌡️ Sensor 2",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "id": 6,
       "type": "stat",
       "title": "Temperatura actual — Sensor 2",
@@ -346,7 +441,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 32
+        "y": 36
       },
       "datasource": {
         "type": "influxdb",
@@ -403,7 +498,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 32
+        "y": 36
       },
       "datasource": {
         "type": "influxdb",
@@ -464,7 +559,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 32
+        "y": 36
       },
       "datasource": {
         "type": "influxdb",
@@ -517,32 +612,17 @@
       ]
     },
     {
-      "id": 9,
-      "type": "alertlist",
-      "title": "Estado de alertas",
+      "id": 105,
+      "type": "row",
+      "title": "📋 Log del colector (conexión/desconexión)",
       "gridPos": {
-        "h": 8,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 42
       },
-      "options": {
-        "showOptions": "current",
-        "maxItems": 10,
-        "sortOrder": 1,
-        "dashboardAlerts": false,
-        "alertName": "",
-        "alertInstanceLabelFilter": "",
-        "stateFilter": {
-          "firing": true,
-          "pending": true,
-          "noData": true,
-          "normal": true,
-          "error": true
-        },
-        "folder": "CPD - Monitorización ambiental",
-        "viewMode": "list"
-      }
+      "collapsed": false,
+      "panels": []
     },
     {
       "id": 11,
@@ -552,7 +632,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 43
       },
       "datasource": {
         "type": "influxdb",
