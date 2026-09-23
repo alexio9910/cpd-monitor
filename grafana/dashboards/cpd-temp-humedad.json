@@ -2,7 +2,7 @@
   "title": "CPD - Temperatura y Humedad",
   "uid": "cpd-temp-humedad",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 5,
   "editable": true,
   "timezone": "browser",
   "refresh": "1m",
@@ -522,7 +522,7 @@
       "title": "Estado de alertas",
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 24,
         "x": 0,
         "y": 18
       },
@@ -545,24 +545,87 @@
       }
     },
     {
-      "id": 10,
-      "type": "annolist",
-      "title": "Historial de alertas (disparos y resoluciones)",
+      "id": 11,
+      "type": "table",
+      "title": "Log de eventos del colector (conexión/desconexión)",
       "gridPos": {
         "h": 8,
-        "w": 16,
-        "x": 8,
-        "y": 18
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-cpd"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tipo"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "desconexion": {
+                        "color": "red",
+                        "text": "🔴 desconexión"
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "reconexion": {
+                        "color": "green",
+                        "text": "🟢 reconexión"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "onlyFromThisDashboard": true,
-        "onlyInTimeRange": false,
-        "limit": 50,
-        "showUser": false,
-        "showTime": true,
-        "showTags": true,
-        "navigateToPanel": true
-      }
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"cpd_monitorizacion\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"cpd_eventos\")\n  |> filter(fn: (r) => r._field == \"mensaje\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)\n  |> keep(columns: [\"_time\", \"sensor_id\", \"ubicacion\", \"tipo\", \"_value\"])\n  |> rename(columns: {_value: \"mensaje\"})",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-cpd"
+          }
+        }
+      ]
     }
   ],
   "annotations": {

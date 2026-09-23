@@ -19,6 +19,13 @@ import (
 // fácilmente en Grafana con una sola consulta.
 const medida = "cpd_ambiente"
 
+// medidaEventos guarda un log de eventos de conexión/desconexión de cada
+// sensor — no lecturas de temperatura/humedad, sino "qué le ha pasado al
+// sensor y cuándo". Permite ver ese historial como una tabla en el
+// dashboard, sin tener que entrar a la Raspberry Pi ni depender de
+// journald. Ver docs/ALERTAS.md o CHANGELOG.md para el detalle.
+const medidaEventos = "cpd_eventos"
+
 // EscritorInflux envuelve el cliente oficial de InfluxDB.
 type EscritorInflux struct {
 	cliente  influxdb2.Client
@@ -74,6 +81,30 @@ func (e *EscritorInflux) Escribir(ctx context.Context, sensorID, ubicacion strin
 
 	if err := e.writeAPI.WritePoint(ctx, punto); err != nil {
 		return fmt.Errorf("no se pudo escribir en InfluxDB la lectura del sensor %s: %w", sensorID, err)
+	}
+	return nil
+}
+
+// EscribirEvento guarda un evento de conexión/desconexión de un sensor
+// (tipo: "desconexion" o "reconexion"). Se llama solo en las transiciones
+// de estado, no en cada ciclo de lectura — ver registrarTransicion en
+// cmd/collector/main.go.
+func (e *EscritorInflux) EscribirEvento(ctx context.Context, sensorID, ubicacion, tipo, mensaje string) error {
+	punto := influxdb2.NewPoint(
+		medidaEventos,
+		map[string]string{
+			"sensor_id": sensorID,
+			"ubicacion": ubicacion,
+			"tipo":      tipo,
+		},
+		map[string]interface{}{
+			"mensaje": mensaje,
+		},
+		time.Now(),
+	)
+
+	if err := e.writeAPI.WritePoint(ctx, punto); err != nil {
+		return fmt.Errorf("no se pudo escribir el evento en InfluxDB del sensor %s: %w", sensorID, err)
 	}
 	return nil
 }
