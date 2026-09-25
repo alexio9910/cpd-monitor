@@ -1,4 +1,9 @@
 apiVersion: 1
+deleteRules:
+- orgId: 1
+  uid: ztest00agrupasen
+- orgId: 1
+  uid: ztest00agrupas2
 groups:
 - orgId: 1
   name: CPD-Ambiente

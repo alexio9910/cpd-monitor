@@ -1,0 +1,621 @@
+# Manual de experto — CPD Monitor
+
+Este documento es la referencia única para **entender, usar, diagnosticar y
+modificar** el sistema de monitorización del CPD, sin necesitar
+conocimientos de programación. No hace falta leerlo entero: busca la
+sección que necesites.
+
+> 📄 Si necesitas el detalle técnico de por qué se construyó así (para
+> desarrolladores), consulta `docs/ARQUITECTURA.md`. Este manual es la
+> versión práctica, orientada a "¿qué hago si...?". Para el detalle
+> exacto de cómo están configuradas las alertas (umbrales, tiempos de
+> evaluación, por qué se ajustó cada cosa), consulta `docs/ALERTAS.md`.
+
+---
+
+## Índice
+
+1. [Cómo funciona el sistema, en dos frases](#1-cómo-funciona-el-sistema-en-dos-frases)
+2. [Cómo leer el dashboard de Grafana](#2-cómo-leer-el-dashboard-de-grafana)
+3. [Qué hacer cuando llega un email de alerta](#3-qué-hacer-cuando-llega-un-email-de-alerta)
+4. [Cambiar quién recibe las alertas por email](#4-cambiar-quién-recibe-las-alertas-por-email)
+5. [Cambiar los rangos normales de temperatura/humedad](#5-cambiar-los-rangos-normales-de-temperaturahumedad)
+6. [Gestionar usuarios de Grafana (dar/quitar acceso)](#6-gestionar-usuarios-de-grafana-darquitar-acceso)
+7. [Añadir o quitar un sensor](#7-añadir-o-quitar-un-sensor)
+8. [Mantenimiento básico (reiniciar, ver logs)](#8-mantenimiento-básico-reiniciar-ver-logs)
+9. [Algo no funciona — diagnóstico rápido](#9-algo-no-funciona--diagnóstico-rápido)
+10. [Dónde está todo (referencia rápida)](#10-dónde-está-todo-referencia-rápida)
+11. [Configurar una IP fija para la Raspberry Pi](#11-configurar-una-ip-fija-para-la-raspberry-pi)
+12. [Backup completo de la tarjeta SD (tar)](#12-backup-completo-de-la-tarjeta-sd-tar)
+13. [Glosario](#13-glosario)
+
+---
+
+## 1. Cómo funciona el sistema, en dos frases
+
+Dos sensores Bluetooth miden temperatura y humedad del CPD. Un programa en
+la Raspberry Pi los lee cada minuto y guarda los datos; Grafana los dibuja
+en gráficas y avisa por email si algo se sale de rango.
+
+```
+Sensor Bluetooth → Raspberry Pi (colector) → Base de datos → Grafana → Tú
+```
+
+Todo corre **dentro de la Raspberry Pi** (IP `192.168.169.5` en tu red
+local) — no depende de ningún servicio externo ni de internet, salvo para
+mandar los emails de alerta.
+
+---
+
+## 2. Cómo leer el dashboard de Grafana
+
+Entra en `http://192.168.169.5:3000` desde cualquier navegador de la red
+local. Usuarios disponibles:
+
+| Usuario | Para qué sirve |
+|---|---|
+| `admin` | Gestionar el sistema (editar, borrar, configurar). Contraseña en `.env` → `GRAFANA_ADMIN_PASSWORD`. |
+| `visor` | Solo ver las gráficas, sin poder tocar nada. Para dar acceso a quien solo necesite consultar. Contraseña en `.env` → `GRAFANA_VIEWER_PASSWORD`. |
+
+Abre el dashboard **"CPD - Temperatura y Humedad"**, organizado en
+secciones plegables (pulsa el título de una sección para colapsarla):
+
+- **📈 Gráficas generales** — Temperatura y Humedad de las últimas 24h con
+  todos los sensores, cada uno como una línea de color distinto. Arriba a
+  la izquierda hay un interruptor "Alertas (disparo/resolución)" para
+  mostrar/ocultar las rayas verticales que marcan cuándo saltó algo.
+- **🚨 Alertas** — "Estado de alertas" (semáforo con las 4 reglas y su
+  estado actual) y un enlace directo al historial completo de Grafana.
+- **🌡️ Sensor 1 / 🌡️ Sensor 2** (y siguientes) — temperatura, humedad y
+  batería (esta última como un gauge circular) de cada sensor, con
+  colores: **verde** = normal, **naranja** = acercándose al límite,
+  **rojo** = fuera de rango.
+- **📋 Log del colector** — tabla con cada conexión/desconexión BLE
+  registrada (motivo y duración), sin tener que entrar por SSH ni mirar
+  `journalctl`.
+
+---
+
+## 3. Qué hacer cuando llega un email de alerta
+
+El asunto empieza siempre con:
+
+- **🔴 ALERTA** → algo está fuera de rango ahora mismo.
+- **🟢 RESUELTA** → ya ha vuelto a rango normal por sí solo. No requiere
+  ninguna acción, es solo confirmación de que se arregló.
+
+Cuando llegue un **🔴 ALERTA**:
+
+1. Mira el cuerpo del correo: te dice el sensor, la ubicación, el valor
+   exacto y desde cuándo. El propio correo distingue si es una alerta de
+   temperatura/humedad fuera de rango, de batería baja, o de "sin datos".
+2. Entra en el dashboard (enlace incluido en el propio correo) para ver
+   si es un pico puntual o una tendencia sostenida — los paneles de
+   "Estado de alertas" e "Historial de alertas" te dan el contexto sin
+   tener que hacer nada más.
+3. Si puedes, revisa físicamente el CPD (¿puerta abierta, aire
+   acondicionado apagado, algo bloqueando la ventilación?).
+4. Si en unos minutos no llega el **🟢 RESUELTA**, el problema sigue
+   activo — actúa según lo que hayas visto en el paso 3, o avisa a
+   alguien que pueda intervenir físicamente en el CPD.
+
+**Si llega una alerta de "sin datos"**: no es un problema de temperatura,
+es que **el propio colector ha dejado de mandar datos** — ver sección 9,
+"No llegan datos al dashboard".
+
+---
+
+## 4. Cambiar quién recibe las alertas por email
+
+Las direcciones **no** se editan en el YAML de Grafana directamente (ahí
+solo hay una referencia a una variable, no las direcciones en sí) — se
+cambian en tu fichero de secretos local:
+
+```bash
+ssh cpd@192.168.169.5
+cd ~/cpd-monitor
+nano .env
+```
+
+Busca la línea `GRAFANA_ALERT_EMAILS=` y añade, quita o cambia
+direcciones ahí, separadas por `;`:
+
+```
+GRAFANA_ALERT_EMAILS="persona1@tuempresa.com;persona2@tuempresa.com"
+```
+
+Guarda (`Ctrl+O`, `Enter`, `Ctrl+X`) y aplica el cambio:
+
+```bash
+docker compose up -d --force-recreate grafana
+```
+
+Prueba que llega bien: en Grafana → **Alerting → Contact points →
+`email-cpd` → Test**.
+
+> `.env` nunca se sube a GitHub — este cambio es puramente local en el
+> host, no requiere ningún commit.
+
+---
+
+## 5. Cambiar los rangos normales de temperatura/humedad
+
+Desde la versión actual, **las reglas de alerta están provisionadas por
+fichero** (`grafana/provisioning/alerting/rules.yaml`), no se crean ni
+editan libremente desde la interfaz — esto es intencionado: así quedan
+versionadas en Git y no se pueden perder ni desconfigurar sin que quede
+constancia en el propio código. Si entras en Grafana → Alerting → Alert
+rules e intentas editar una regla desde ahí, verás un aviso de que está
+"provisioned" y no dejará guardar cambios en la interfaz.
+
+Para cambiar un rango, edita el fichero directamente **en tu WSL** (no en
+la Pi — ver la nota de la sección 7 sobre por qué):
+
+```bash
+cd ~/cpd-monitor
+nano grafana/provisioning/alerting/rules.yaml
+```
+
+Busca el bloque de la regla que quieras cambiar (`title: Humedad CPD fuera
+de rango` o `title: Temperatura CPD fuera de rango`) y dentro de él la
+sección `evaluator.params`, con los dos números del rango actual
+(**18 y 33** para temperatura, **25 y 60** para humedad). Cámbialos por
+los que necesites.
+
+Actualiza también el texto del email en
+`grafana/provisioning/alerting/contactpoints.yaml` (busca `rango normal:`)
+para que el mensaje que reciben las personas avisadas diga el rango
+correcto — y, si quieres que los colores del dashboard
+(verde/naranja/rojo) coincidan con los nuevos rangos, los umbrales viven
+en `grafana/dashboards/cpd-temp-humedad.json` (busca `"thresholds"` en
+cada panel).
+
+Guarda, haz `git add`, `commit` y `push`, y despliega (`git pull` +
+`docker compose restart grafana` en la Pi, o `./deploy.sh`).
+
+---
+
+## 6. Gestionar usuarios de Grafana (dar/quitar acceso)
+
+**Dar acceso de solo ver a alguien nuevo** — como `admin`, en Grafana:
+
+1. **Administration → Users and access → Users → New user**.
+2. Rellena nombre, usuario, contraseña.
+3. Una vez creado, entra en ese usuario y ponle el rol **Viewer** (no
+   Editor ni Admin, salvo que de verdad necesite poder editar).
+
+**Cambiar una contraseña** (incluida la de `admin`): mismo menú,
+selecciona el usuario → **Change password**.
+
+**Quitar acceso a alguien**: mismo menú → selecciona el usuario →
+**Delete user**.
+
+---
+
+## 7. Añadir o quitar un sensor
+
+Procedimiento completo para un sensor adicional (tercero, cuarto...). No
+hace falta recompilar nada.
+
+> ⚠️ **Hazlo siempre desde tu WSL, no directamente en la Raspberry Pi.**
+> Ediciones hechas directo en la Pi (`config.yaml`, el dashboard JSON...)
+> sin pasar por Git han hecho que el repositorio y la Pi se
+> desincronizaran más de una vez, con riesgo real de perder cambios al
+> hacer `push`/`pull` después. El flujo correcto es: editar y ejecutar
+> el script en tu copia de WSL → `git add`/`commit`/`push` →
+> `./deploy.sh` (o `git pull` + reinicio manual en la Pi).
+
+### 7.1 — Encuentra la MAC del sensor nuevo
+
+Con el sensor encendido y cerca de la Raspberry Pi:
+
+```bash
+ssh cpd@192.168.169.5
+bluetoothctl
+scan on
+```
+
+Espera a ver su nombre (algo como `SHT40 Gadget`) y anota la dirección
+tipo `AA:BB:CC:DD:EE:FF`. Luego:
+
+```
+scan off
+exit
+```
+
+### 7.2 — Añádelo a la configuración
+
+Ver sección 7.3 más abajo — `scripts/gestionar_sensor.py` hace este paso
+y el siguiente a la vez, en un solo comando. `config.yaml` no se sube a
+GitHub (contiene datos de sensores reales, aunque sin secretos), así que
+recuerda copiarlo también a la Pi — el propio script te da el comando
+exacto al terminar.
+
+### 7.2 y 7.3 juntos — un solo comando
+
+En vez de editar `config.yaml` y el dashboard por separado, usa
+`scripts/gestionar_sensor.py` **en tu WSL** — hace las dos cosas de una
+vez:
+
+```bash
+cd ~/cpd-monitor
+python3 scripts/gestionar_sensor.py añadir sensor3 "AA:BB:CC:DD:EE:FF" "Sensor 3"
+```
+
+Añade el bloque a `config.yaml`, duplica los tres paneles de plantilla
+(temperatura, humedad, batería — batería como `gauge`) cambiándoles el
+filtro y el título, y los coloca en una fila nueva debajo de las
+existentes. Si el sensor ya existe en cualquiera de los dos sitios, no
+toca nada (no duplica). Al terminar, el propio script te imprime los
+comandos exactos que faltan: copiar `config.yaml` a la Pi, reiniciar el
+colector, y el commit/push.
+
+Para quitar un sensor, el mismo script a la inversa:
+
+```bash
+python3 scripts/gestionar_sensor.py quitar sensor3
+```
+
+Quita el bloque de `config.yaml` y los tres paneles del dashboard.
+
+### 7.4 — Las alertas no requieren ningún cambio
+
+Las 4 reglas de alerta (temperatura, humedad, batería, sin datos) ya
+cubren automáticamente cualquier sensor que exista — incluida la de
+"sin datos", que calcula el tiempo transcurrido desde la última lectura
+de cada sensor sin necesitar su `id` escrito en ningún sitio. No hay que
+crear ni tocar ninguna regla al añadir o quitar un sensor.
+
+---
+
+## 8. Mantenimiento básico (reiniciar, ver logs)
+
+Todo esto es seguro de ejecutar, no borra datos:
+
+| Quiero... | Comando (conectado por SSH a la Pi) |
+|---|---|
+| Ver qué está leyendo el colector ahora mismo | `journalctl -u cpd-monitor -f` (sal con `Ctrl+C`) |
+| Reiniciar el colector | `sudo systemctl restart cpd-monitor` |
+| Ver si el colector está bien | `sudo systemctl status cpd-monitor` |
+| Reiniciar Grafana | `docker compose restart grafana` (dentro de `~/cpd-monitor`) |
+| Reiniciar InfluxDB (la base de datos) | `docker compose restart influxdb` |
+| Reiniciar TODO (tras un corte de luz, etc.) | Simplemente enciende la Raspberry Pi — todo arranca solo |
+| Guardar un cambio de configuración en GitHub | Desde tu WSL: `git add -A && git commit -m "..."` y `git push`, luego `./deploy.sh` (o `git pull` en la Pi) |
+| Ver cuánto espacio ocupan los logs | `journalctl --disk-usage` |
+
+### Retención y rotación de logs
+
+Los logs del colector (y de cualquier otro servicio del sistema) no van a
+un fichero de texto — van a **`journald`**, el sistema de logs de
+systemd, que los guarda en un **formato binario propio**. Es lo que ves
+al ejecutar `journalctl -u cpd-monitor`: `journalctl` es la herramienta
+que sabe leer ese formato; no se pueden abrir esos ficheros con `cat` o
+un editor de texto normal (ver más abajo cómo consultarlos bien).
+
+**Dónde viven los ficheros:**
+
+```bash
+ls -lh /var/log/journal/*/
+```
+
+Verás varios ficheros `.journal` dentro de una carpeta cuyo nombre es el
+"machine-id" (un identificador único de esta instalación concreta de
+Linux). El fichero **activo** (donde se escribe ahora mismo) se llama
+`system.journal`; los **ya rotados** tienen nombres como
+`system@<id-de-arranque>-<numero>-<fecha>.journal` — cada uno es un
+"trozo" cerrado del historial, de un periodo de tiempo concreto.
+
+**Qué hace cada parámetro** (fichero
+`deploy/systemd/journald-cpd-monitor.conf`, instalado en
+`/etc/systemd/journald.conf.d/cpd-monitor.conf`):
+
+| Parámetro | Qué hace |
+|---|---|
+| `Storage=persistent` | Guarda los logs en disco (`/var/log/journal/`), no solo en memoria RAM. Sin esto, **se perderían todos los logs al reiniciar** — justo cuando más falta hacen, para investigar qué pasó antes de un fallo. |
+| `SystemMaxUse=200M` | Techo de espacio total que pueden ocupar **todos** los ficheros de log juntos (activo + archivados). Al superarlo, journald borra los archivados más antiguos hasta volver a estar por debajo. |
+| `SystemMaxFileSize=20M` | Tamaño máximo de **cada fichero individual** antes de cerrarlo (rotarlo) y empezar uno nuevo. Sin fijarlo, journald usa un valor automático (1/8 del `SystemMaxUse`) menos predecible. |
+| `MaxFileSec=1week` | Fuerza una rotación **al menos** una vez por semana, aunque el fichero no haya llegado a los 20 MB. Con el volumen de logs tan bajo de este proyecto, sin esto un solo fichero podría tardar meses en rotar — con este límite, siempre hay un punto de corte semanal claro. |
+| `MaxRetentionSec=90day` | Nada de más de 90 días de antigüedad se conserva, aunque hubiera espacio de sobra. |
+
+> ⚠️ **Aviso específico de Raspberry Pi OS — leer antes de aplicar esto.**
+> Raspberry Pi OS trae, de fábrica, un fichero propio
+> (`/usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf`) que
+> fuerza `Storage=volatile` — es decir, **logs solo en memoria RAM,
+> nunca en la tarjeta SD**. Es una decisión deliberada del sistema
+> operativo: cada escritura en una SD la desgasta un poco, y evitar
+> escribir logs constantemente en ella alarga su vida útil.
+>
+> El problema: como ese fichero también es un "drop-in" válido para
+> journald, **puede pisar silenciosamente** el `Storage=persistent` de
+> `journald-cpd-monitor.conf` — journald no avisa de ningún conflicto,
+> simplemente aplica lo que su orden interno de prioridad decida, sin
+> avisar. El resultado, si no se corrige, es que **todos los límites de
+> esta tabla existen sobre el papel, pero los logs se siguen perdiendo
+> en cada reinicio** de todas formas — sin ningún error visible que lo
+> delate.
+>
+> **Cómo desactivarlo de forma garantizada:** no basta con "poner otro
+> fichero que compita" — hay que **enmascararlo explícitamente**,
+> creando un enlace con el mismo nombre apuntando a `/dev/null` dentro
+> de `/etc/` (que sí tiene prioridad garantizada sobre `/usr/lib/`):
+>
+> ```bash
+> sudo ln -sf /dev/null /etc/systemd/journald.conf.d/40-rpi-volatile-storage.conf
+> sudo systemctl restart systemd-journald
+> ```
+>
+> Y un segundo paso, igual de necesario: aunque la configuración ya sea
+> correcta, **journald no traslada por sí solo** lo que ya tenía
+> guardado en memoria hacia el disco — hace falta pedírselo de forma
+> explícita, una única vez:
+>
+> ```bash
+> sudo journalctl --flush
+> ```
+>
+> Verifica que ha funcionado con `journalctl --header | grep -i "File
+> Path"` — debe decir `/var/log/journal/...`, no `/run/log/journal/...`.
+>
+> **La contrapartida honesta:** al desactivar esta optimización de
+> fábrica, la SD sufre algo más de desgaste por las escrituras de logs.
+> Con el volumen tan bajo de este proyecto (unos 20 MB en total) el
+> efecto es mínimo, pero es el precio real de tener logs que sobrevivan
+> a un reinicio — que, para un sistema de monitorización de un CPD
+> pensado para correr años sin supervisión constante, vale la pena
+> pagar: sin logs persistentes, cualquier investigación de un fallo
+> pasado (justo cuando más falta hacen) sería imposible si el sistema
+> se hubiera reiniciado entre medias.
+
+**Cómo rota de verdad, paso a paso:** el fichero activo va creciendo; en
+cuanto llega a `SystemMaxFileSize` (20M) **o** pasa una semana
+(`MaxFileSec`), lo que ocurra antes, journald lo cierra ("archivado") y
+abre uno nuevo. Cuando la suma de todos los ficheros archivados supera
+`SystemMaxUse` (200M), o alguno tiene más de `MaxRetentionSec` (90 días),
+journald **borra esos ficheros completos** — no los recorta ni los
+comprime más, los elimina enteros. Todo esto ocurre solo, sin cron ni
+intervención manual.
+
+Sobre la compresión: journald ya comprime internamente las entradas de
+log largas (por encima de ~512 bytes), campo a campo, según cómo esté
+compilado el sistema — es un mecanismo distinto al de `logrotate`
+(que comprime el fichero entero con gzip). Con el volumen de este
+proyecto (una línea corta por sensor y minuto), la inmensa mayoría de
+entradas ni siquiera llega a ese umbral, así que en la práctica el efecto
+es mínimo — el tamaño ya es pequeño de por sí (unos 9 MB en total en una
+instalación típica).
+
+**Por qué no `logrotate`:** `logrotate` está pensado para ficheros de
+texto plano, y estos logs nunca tocan uno — van directos al formato
+binario de journald. La herramienta correcta para rotar logs de journald
+es su propia configuración (la de arriba), no `logrotate`.
+
+**Cómo consultar los logs correctamente** (siempre con `journalctl`,
+nunca abriendo los ficheros `.journal` a mano):
+
+| Quiero... | Comando |
+|---|---|
+| Ver los logs del colector en directo | `journalctl -u cpd-monitor -f` |
+| Ver solo lo de hoy | `journalctl -u cpd-monitor --since today` |
+| Ver un rango de fechas concreto | `journalctl -u cpd-monitor --since "2026-08-01" --until "2026-08-07"` |
+| Ver solo los últimos N minutos/horas | `journalctl -u cpd-monitor --since "-2 hours"` |
+| Ver cuánto espacio ocupan en total | `journalctl --disk-usage` |
+| Exportar todo a un fichero de texto plano (para archivar o compartir) | `journalctl -u cpd-monitor --no-pager > logs-cpd-monitor.txt` |
+| Ver logs de un arranque anterior de la Pi | `journalctl -u cpd-monitor --list-boots` (lista arranques) y luego `journalctl -u cpd-monitor -b -1` (el anterior) |
+
+---
+
+## 9. Algo no funciona — diagnóstico rápido
+
+| Síntoma | Probablemente | Qué hacer |
+|---|---|---|
+| No veo datos nuevos en el dashboard | El colector no está leyendo el sensor | `journalctl -u cpd-monitor -f` y mira el último error. Si dice "no se pudo conectar", acércate al sensor o revisa su batería. |
+| Me llega una alerta de "sin datos" | El colector está parado o la Pi tiene un problema | `sudo systemctl status cpd-monitor`. Si no está "active (running)", `sudo systemctl restart cpd-monitor`. Si aparece "active (running)" pero llevas rato sin ver líneas nuevas en `journalctl -u cpd-monitor -f`, el proceso puede estar colgado sin que systemd lo detecte (ver `docs/MEJORAS-FUTURAS.md`, "Watchdog de systemd") — en ese caso, reinícialo igualmente a mano. |
+| No puedo entrar en Grafana | El contenedor está caído, o la Pi está apagada | Conéctate por SSH y prueba `docker compose ps`. Si `cpd-grafana` no aparece "Up", `docker compose up -d`. |
+| No me llegan alertas por email pero el dashboard sí tiene datos | Problema del servidor SMTP, no del colector | En Grafana → Alerting → Contact points → `email-cpd` → **Test**. Si falla, avisa a IT sobre la cuenta de correo configurada en `GRAFANA_SMTP_USER` (dentro de `.env`). |
+| No puedo editar una regla de alerta desde la interfaz | Las reglas están provisionadas por fichero (intencionado) | Edita `grafana/provisioning/alerting/rules.yaml` directamente — ver sección 5. |
+| Nada de lo anterior funciona | — | Copia el mensaje de error exacto (de `journalctl` o de la pantalla) y pásalo a soporte técnico — con el error literal se resuelve mucho más rápido que describiéndolo de memoria. |
+
+---
+
+## 10. Dónde está todo (referencia rápida)
+
+| Qué | Dónde |
+|---|---|
+| Raspberry Pi (IP) | `192.168.169.5`, usuario SSH `cpd` |
+| Dashboard de Grafana | `http://192.168.169.5:3000` |
+| InfluxDB (rara vez hace falta entrar directamente) | `http://192.168.169.5:8086` |
+| Carpeta de trabajo del proyecto (en la Pi) | `~/cpd-monitor` |
+| Copia real que usa el servicio | `/opt/cpd-monitor` |
+| Todas las contraseñas y tokens | fichero `.env` dentro de `~/cpd-monitor` (nunca se sube a GitHub) |
+| Configuración de los sensores | `config.yaml` (tampoco se sube a GitHub) |
+| Reglas de alerta (versionadas) | `grafana/provisioning/alerting/rules.yaml` |
+| Detalle de configuración de alertas | `docs/ALERTAS.md` |
+| Historial de cambios del proyecto | `CHANGELOG.md` |
+| Repositorio en GitHub | `github.com/alexio9910/cpd-monitor` |
+
+> ⚠️ `.env` y `config.yaml` contienen contraseñas y tokens reales.
+> Nunca los compartas por email/chat ni los subas a ningún sitio público.
+
+---
+
+## 11. Configurar una IP fija para la Raspberry Pi
+
+Por defecto, la Raspberry Pi recibe una IP asignada automáticamente por tu
+router (DHCP), que **puede cambiar** con el tiempo (por ejemplo, tras un
+corte de luz largo o un reinicio del router). Si cambia, dejan de
+funcionar: el enlace al dashboard que llevan los emails de alerta, el
+acceso por SSH que tengas guardado, y `deploy.sh`. Conviene fijarla en
+cuanto el sistema pase a producción de verdad — la IP de este documento
+(`192.168.169.5`) asume que ya está fijada.
+
+Dos formas de hacerlo — elige la que puedas usar:
+
+### Opción A — Reserva de IP en el router (recomendada)
+
+La Pi sigue "hablando" DHCP con normalidad (cero riesgo de quedarse sin
+red por una mala configuración local); simplemente le dices al router
+"a este dispositivo dale siempre la misma IP".
+
+1. Averigua la dirección MAC de la Raspberry Pi:
+```bash
+   ip link show eth0   # para conexión por cable
+   ip link show wlan0  # para wifi
+```
+   Busca la línea `link/ether AA:BB:CC:DD:EE:FF` — esa es la MAC.
+2. Entra en la web de administración de tu router (normalmente algo como
+   `192.168.1.1` o `192.168.0.1` en el navegador).
+3. Busca una sección "DHCP", "Reserva de IP" o "Static Leases" (el
+   nombre exacto varía según la marca del router).
+4. Añade una reserva: la MAC de la Pi → la IP que quieras que tenga
+   siempre (lo más cómodo: la misma que ya tiene ahora, para no tener
+   que cambiar nada más después).
+5. Guarda y reinicia la Raspberry Pi.
+
+> Si la red la gestiona el departamento de IT de la empresa y no tienes
+> acceso al router, pídeles directamente esta reserva — es la opción más
+> limpia y no requiere tocar nada en la Pi.
+
+### Opción B — IP fija configurada en la propia Raspberry Pi
+
+Si no puedes tocar el router. Las versiones actuales de Raspberry Pi OS
+gestionan la red con **NetworkManager** — la guía antigua de editar
+`/etc/dhcpcd.conf` ya no funciona en instalaciones recientes.
+
+```bash
+ssh cpd@192.168.169.5
+nmcli con show
+```
+Anota el nombre exacto de tu conexión (algo como `Wired connection 1`
+para cable, o el nombre de tu red wifi).
+
+```bash
+sudo nmcli con mod "Wired connection 1" \
+  ipv4.addresses IP_QUE_QUIERAS/24 \
+  ipv4.gateway IP_DE_TU_ROUTER \
+  ipv4.dns IP_DE_TU_ROUTER \
+  ipv4.method manual
+
+sudo nmcli con up "Wired connection 1"
+```
+Sustituye `"Wired connection 1"` por el nombre real del paso anterior,
+`IP_QUE_QUIERAS` por la IP fija deseada, y `IP_DE_TU_ROUTER` por la IP de
+tu router (normalmente termina en `.1`).
+
+Comprueba que se aplicó:
+```bash
+ip a show eth0
+```
+
+### Después de fijar la IP
+
+Si la IP nueva es distinta a la que tenías, actualiza:
+
+- `GRAFANA_PUBLIC_URL` en `.env` (el enlace de los emails de alerta):
+```bash
+  nano .env   # GRAFANA_PUBLIC_URL=http://IP_NUEVA:3000
+  docker compose up -d --force-recreate grafana
+```
+- `PI_HOST` en el `.env` de tu WSL, si usas `deploy.sh`.
+- Cualquier acceso directo o gestor de contraseñas apuntando a la IP
+  antigua.
+
+---
+
+## 12. Backup completo de la tarjeta SD (tar)
+
+A diferencia del backup del *proyecto* (código y configuración, ya
+respaldado de forma continua en GitHub — ver sección 8), esto es una
+copia de **todo el sistema operativo** de la Raspberry Pi: útil como
+"punto de partida" completo si la tarjeta SD se rompe algún día, para no
+tener que reinstalar todo desde cero siguiendo
+`docs/GUIA-DESDE-CERO.md`.
+
+Se evaluó primero [raspiBackup](https://github.com/framps/raspiBackup)
+(la herramienta de referencia de la comunidad para esto), pero se
+descartó para un backup puntual como este: sus comprobaciones de
+seguridad (exigir parar/arrancar servicios, exigir un dispositivo
+externo válido) están pensadas para backups automáticos y desatendidos,
+y añaden fricción innecesaria aquí. El comando nativo `tar` es más
+simple y predecible para este caso.
+
+### Procedimiento (backup en caliente, sin parar ningún servicio)
+
+Con el sistema funcionando con normalidad:
+
+```bash
+ssh cpd@192.168.169.5
+mkdir -p ~/backup-temp
+sudo tar --numeric-owner -czvf ~/backup-temp/backup-tar-$(date +%Y%m%d).tar.gz \
+  --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/tmp \
+  --exclude=/mnt --exclude=/home/cpd/backup-temp / 2>&1 | tail -20
+echo "Codigo de salida: ${PIPESTATUS[0]}"
+```
+
+Las carpetas excluidas son todas **estado de la máquina en marcha**, no
+configuración ni datos guardados — es la práctica estándar al respaldar
+un sistema Linux con `tar`, no algo específico de este proyecto:
+
+| Carpeta | Por qué se excluye |
+|---|---|
+| `/proc`, `/sys` | Vistas en vivo del kernel/hardware, generadas de nuevo en cada arranque — no son ficheros reales. |
+| `/dev` | Nodos de dispositivo, recreados automáticamente según el hardware detectado al arrancar. |
+| `/run`, `/tmp` | Estado temporal en memoria/disco de procesos en marcha — se vacía en cada reinicio por diseño. |
+| `/mnt` | Puntos de montaje temporales propios (vacío en uso normal). |
+
+**Un código de salida `1` es aceptable** en un backup en caliente — suele
+significar avisos del tipo `file changed as we read it` (algún fichero,
+típicamente de InfluxDB, cambió justo mientras se copiaba). Cualquier
+otro código merece revisión.
+
+Bájalo a tu ordenador con `scp`, desde tu WSL:
+
+```bash
+scp cpd@192.168.169.5:~/backup-temp/backup-tar-*.tar.gz ~/Downloads/
+```
+
+Y limpia la copia temporal de la Pi una vez confirmado que llegó bien:
+
+```bash
+rm -rf ~/backup-temp
+```
+
+> ⚠️ Al ser un backup en caliente, existe una posibilidad remota de
+> capturar algún fichero de InfluxDB a mitad de una escritura. Con datos
+> que se regeneran solos cada minuto y sin información crítica
+> irrecuperable, es un riesgo asumible a cambio de no interrumpir el
+> servicio de monitorización para hacer el backup.
+
+### Cómo restaurarlo
+
+1. Instala una Raspberry Pi OS limpia en una tarjeta SD nueva y arráncala
+   una vez para que termine su configuración inicial.
+2. Copia el `.tar.gz` a la nueva Pi:
+```bash
+   scp backup-tar-AAAAMMDD.tar.gz cpd@IP_DE_LA_NUEVA_PI:~/
+```
+3. Extráelo sobre la raíz del sistema (con cuidado: esto sobrescribe
+   ficheros del sistema — hazlo solo en una instalación recién hecha,
+   nunca sobre un sistema ya en uso):
+```bash
+   ssh cpd@IP_DE_LA_NUEVA_PI
+   sudo tar --numeric-owner -xzvf ~/backup-tar-AAAAMMDD.tar.gz -C /
+```
+4. Reinicia y verifica que todo volvió igual (`docker ps`,
+   `systemctl status cpd-monitor`, el dashboard de Grafana) — igual que
+   se comprueba tras cualquier despliegue nuevo (Fase 10 de
+   `docs/GUIA-DESDE-CERO.md`).
+
+---
+
+## 13. Glosario
+
+| Término | Qué es |
+|---|---|
+| Colector | El programa que lee los sensores cada minuto (corre como servicio en la Pi). |
+| InfluxDB | La base de datos donde se guarda el histórico de lecturas. |
+| Grafana | La web que dibuja las gráficas y manda las alertas. |
+| Contact point | En Grafana, a quién/cómo se envía una alerta (en nuestro caso, email). |
+| Provisioning | Configuración de Grafana definida por fichero (versionada en Git) en vez de creada a mano desde la interfaz. |
+| SMTP | El servidor de correo que Grafana usa para poder enviar emails. |
+| BLE / Bluetooth Low Energy | El tipo de Bluetooth de bajo consumo que usan los sensores Sensirion. |
+| Systemd / servicio | El mecanismo de Linux que arranca el colector solo y lo reinicia si falla. |

@@ -3,7 +3,7 @@ apiVersion: 1
 policies:
   - orgId: 1
     receiver: email-cpd
-    group_by: ['alertname']
+    group_by: ['alertname', 'sensor_id']
     group_wait: 10s
     group_interval: 10s
     repeat_interval: 30m
@@ -15,17 +15,3 @@ policies:
         group_wait: 10s
         group_interval: 10s
         repeat_interval: 24h
-      - receiver: email-cpd
-        object_matchers:
-          - ['sensor_id', '=', 'sensor1']
-        group_by: ['alertname']
-        group_wait: 10s
-        group_interval: 10s
-        repeat_interval: 30m
-      - receiver: email-cpd
-        object_matchers:
-          - ['sensor_id', '=', 'sensor2']
-        group_by: ['alertname']
-        group_wait: 10s
-        group_interval: 10s
-        repeat_interval: 30m
