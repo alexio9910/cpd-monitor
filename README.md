@@ -164,7 +164,7 @@ cpd-monitor/
 │   │   ├── dashboards/           # proveedor del dashboard
 │   │   └── alerting/             # contact point, política, y las 4 reglas
 │   └── dashboards/               # JSON del dashboard
-├── deploy/systemd/               # unidad systemd del colector + espera a InfluxDB
+├── deploy/systemd/               # unidad systemd, espera a InfluxDB, config de journald
 ├── deploy.sh                     # despliega desde tu máquina de desarrollo
 ├── docs/
 │   ├── GUIA-DESDE-CERO.md
@@ -172,6 +172,9 @@ cpd-monitor/
 │   ├── ALERTAS.md
 │   ├── ARQUITECTURA.md
 │   └── MEJORAS-FUTURAS.md
+├── go.mod / go.sum
+├── LICENSE
+├── Makefile
 ├── CHANGELOG.md
 └── .github/workflows/build.yml   # CI: compila y valida en cada push
 ```
